@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase, isMockMode } from '../../supabaseClient';
 import imageCompression from 'browser-image-compression';
 
 export default function RegistrationModal({ event, user, onClose, onSuccess, onRefresh }) {
   const [profile, setProfile] = useState(null);
+  const fileInputRefs = useRef({});
   
   // 1. Recover step progress automatically if a mobile app-switch reload occurs
   const [currentStep, setCurrentStep] = useState(() => {
@@ -670,32 +671,47 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
                                 className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs resize-none"
                               />
                             ) : field.type === 'file' ? (
-                              /* PERSISTENT FILE ATTACHMENT BOX */
-                              <div className="flex flex-col gap-2 w-full mt-2 text-left">
+                              /* PERSISTENT NON-REFRESHING FILE ATTACHMENT MODULAR SLOT */
+                              <div className="flex flex-col gap-2 w-full mt-2 text-left" onClick={(e) => e.stopPropagation()}>
                                 <div className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-4">
                                   <div className="flex flex-col gap-1">
                                     {answers[field.id] ? (
-                                      /* SUCCESS STATE: Displays perfectly even if the browser reloads or resets the input text buffer */
                                       <span className="text-xs font-bold text-emerald-600 flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
-                                        ✓ File Saved & Uploaded Successfully
+                                        ✓ File Attached Perfectly
                                       </span>
                                     ) : (
                                       <span className="text-xs text-slate-400 italic">
-                                        {answers[`uploading_${field.id}`] ? 'Uploading asset...' : 'No document attached yet'}
+                                        {answers[`uploading_${field.id}`] ? 'Uploading document...' : 'No document attached yet'}
                                       </span>
                                     )}
                                   </div>
 
-                                  {/* CUSTOM STYLIZED TRIGGER BUTTON */}
-                                  <label className="cursor-pointer text-xs font-bold bg-white text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-xl border border-slate-200 shadow-sm transition-all flex-shrink-0">
+                                  {/* HIDDEN INPUT MANAGED VIA USE-REF TRANSFERS */}
+                                  <input
+                                    type="file"
+                                    id={`file-input-${field.id}`}
+                                    className="hidden"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                    }}
+                                    onChange={(e) => handleCustomFieldFileUpload(e, field.id)}
+                                    ref={(el) => { fileInputRefs.current[field.id] = el; }}
+                                  />
+
+                                  {/* SAFE EXPLICIT ACTION BUTTON TO SECURE FOCUS */}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      if (fileInputRefs.current[field.id]) {
+                                        fileInputRefs.current[field.id].click();
+                                      }
+                                    }}
+                                    className="text-xs font-bold bg-white text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-xl border border-slate-200 shadow-sm transition-all flex-shrink-0 active:scale-95"
+                                  >
                                     {answers[field.id] ? '🔄 Change File' : '📤 Choose File'}
-                                    <input
-                                      type="file"
-                                      accept="application/pdf, image/*"
-                                      className="hidden"
-                                      onChange={(e) => handleCustomFieldFileUpload(e, field.id)}
-                                    />
-                                  </label>
+                                  </button>
                                 </div>
                                 {answers[field.id] && (
                                   <div className="text-[10px] text-gray-400 truncate max-w-xs pl-2">
