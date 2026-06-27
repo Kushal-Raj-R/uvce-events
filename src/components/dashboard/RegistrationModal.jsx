@@ -90,21 +90,55 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
     }));
   };
 
-  const handleCustomFileChange = (e, questionConfig) => {
-    const file = e.target.files[0];
+  const handleCustomFileChange = async (e, field) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const file = e.target.files?.[0];
     if (!file) return;
 
     const fileSizeInMB = file.size / (1024 * 1024);
-    const allowedLimit = questionConfig.max_size || 2; // Fallback to 2MB if not specified
+    const allowedLimit = field.max_size || 2;
 
     if (fileSizeInMB > allowedLimit) {
-      alert(`The file size for "${questionConfig.label}" must be under ${allowedLimit}MB. Your file is ${fileSizeInMB.toFixed(2)}MB.`);
-      e.target.value = ''; // Reset file input selection
+      alert(`The file size for "${field.label}" must be under ${allowedLimit}MB. Your file is ${fileSizeInMB.toFixed(2)}MB.`);
       return;
     }
-    
-    // Proceed with processing or compression...
-    handleCustomFieldChange(questionConfig.id, file);
+
+    try {
+      setAnswers(prev => ({
+        ...prev,
+        [`uploading_${field.id}`]: true
+      }));
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `custom-fields/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('event-materials')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('event-materials')
+        .getPublicUrl(filePath);
+
+      setAnswers(prev => ({
+        ...prev,
+        [field.id]: urlData.publicUrl,
+        [`uploading_${field.id}`]: false
+      }));
+
+    } catch (error) {
+      console.error("File attachment failed safely:", error.message);
+      alert(`Upload failed: ${error.message}`);
+      setAnswers(prev => ({
+        ...prev,
+        [`uploading_${field.id}`]: false
+      }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -576,13 +610,32 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
                                 className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs resize-none"
                               />
                             ) : field.type === 'file' ? (
-                              <input
-                                type="file"
-                                accept="application/pdf, image/*"
-                                required
-                                onChange={(e) => handleCustomFileChange(e, field)}
-                                className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs bg-white"
-                              />
+                              <div className="flex flex-col gap-2">
+                                <div className="flex items-center gap-3">
+                                  <label className="cursor-pointer text-xs font-semibold text-blue-600 bg-blue-50/50 hover:bg-blue-50 px-3 py-2 rounded-xl border border-blue-100 transition-all">
+                                    {answers[field.id] ? '🔄 Change File' : '📤 Choose PDF or Image'}
+                                    <input
+                                      type="file"
+                                      accept="application/pdf, image/*"
+                                      onChange={(e) => handleCustomFileChange(e, field)}
+                                      className="hidden"
+                                    />
+                                  </label>
+                                  {answers[`uploading_${field.id}`] && (
+                                    <span className="text-xs text-slate-400 animate-pulse">Uploading...</span>
+                                  )}
+                                  {answers[field.id] && !answers[`uploading_${field.id}`] && (
+                                    <span className="text-xs font-medium text-emerald-600 flex items-center gap-0.5">
+                                      ✓ File uploaded
+                                    </span>
+                                  )}
+                                </div>
+                                {answers[field.id] && (
+                                  <div className="text-[10px] text-gray-400 truncate max-w-xs">
+                                    Url: <a href={answers[field.id]} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">{answers[field.id]}</a>
+                                  </div>
+                                )}
+                              </div>
                             ) : (
                               <input
                                 type="text"
