@@ -23,8 +23,6 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
   const [friendsList, setFriendsList] = useState([]);
   const [selectedTeammates, setSelectedTeammates] = useState([]);
   const [teamName, setTeamName] = useState('');
-  const [cameraStream, setCameraStream] = useState(null);
-  const [activeCameraField, setActiveCameraField] = useState(null);
 
   // 3. Keep localStorage perfectly updated whenever changes happen
   useEffect(() => {
@@ -49,9 +47,6 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
 
   const handleClose = () => {
     clearRegistrationCache();
-    if (cameraStream) {
-      cameraStream.getTracks().forEach(track => track.stop());
-    }
     onClose();
   };
 
@@ -71,11 +66,8 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
     return () => {
       // 2. Turn auto-refresh back ON when this modal closes completely
       localStorage.removeItem('block_global_refresh');
-      if (cameraStream) {
-        cameraStream.getTracks().forEach(track => track.stop());
-      }
     };
-  }, [cameraStream]);
+  }, []);
 
   useEffect(() => {
     // Fetch profile of the logged-in student to pre-fill/display
@@ -148,145 +140,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
     }));
   };
 
-  const _handleCustomFieldFileUpload = async (e, fieldId) => {
-    e.preventDefault();
-    e.stopPropagation();
 
-    const file = e.target?.files?.[0] || e.dataTransfer?.files?.[0];
-    if (!file) return;
-
-    const fileSizeInMB = file.size / (1024 * 1024);
-    const field = event?.custom_fields?.find(f => f.id === fieldId);
-    const allowedLimit = field?.max_size || 2;
-    const fieldLabel = field?.label || 'File';
-
-    if (fileSizeInMB > allowedLimit) {
-      alert(`The file size for "${fieldLabel}" must be under ${allowedLimit}MB. Your file is ${fileSizeInMB.toFixed(2)}MB.`);
-      return;
-    }
-
-    const reader = new FileReader();
-    
-    reader.onloadend = async () => {
-      const base64String = reader.result;
-      
-      const cachedAnswers = JSON.parse(localStorage.getItem(`reg_answers_${event?.id}`) || '{}');
-      cachedAnswers[fieldId] = base64String;
-      localStorage.setItem(`reg_answers_${event?.id}`, JSON.stringify(cachedAnswers));
-      
-      setAnswers(prev => ({
-        ...prev,
-        [fieldId]: base64String
-      }));
-
-      try {
-        setAnswers(prev => ({ ...prev, [`uploading_${fieldId}`]: true }));
-        
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random()}_${Date.now()}.${fileExt}`;
-        const filePath = `student-uploads/${fileName}`;
-
-        const base64Data = base64String.split(',')[1];
-        const blob = await fetch(`data:${file.type};base64,${base64Data}`).then(res => res.blob());
-
-        const { error: uploadError } = await supabase.storage
-          .from('event-materials')
-          .upload(filePath, blob, { contentType: file.type, upsert: true });
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('event-materials')
-          .getPublicUrl(filePath);
-
-        const finalAnswers = JSON.parse(localStorage.getItem(`reg_answers_${event?.id}`) || '{}');
-        finalAnswers[fieldId] = publicUrl;
-        localStorage.setItem(`reg_answers_${event?.id}`, JSON.stringify(finalAnswers));
-        setAnswers(finalAnswers);
-
-      } catch (err) {
-        console.error("Background sync failed, fallback string kept safe:", err.message);
-      } finally {
-        setAnswers(prev => ({ ...prev, [`uploading_${fieldId}`]: false }));
-      }
-    };
-
-    reader.readAsDataURL(file);
-  };
-
-  const startInlineCamera = async (fieldId) => {
-    try {
-      setActiveCameraField(fieldId);
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" }, 
-        audio: false
-      });
-      setCameraStream(stream);
-      
-      setTimeout(() => {
-        const videoElement = document.getElementById(`video-preview-${fieldId}`);
-        if (videoElement) videoElement.srcObject = stream;
-      }, 100);
-    } catch (err) {
-      console.error("Camera access error:", err);
-      alert("Camera initialization failed. Please allow camera permissions in your mobile browser settings.");
-    }
-  };
-
-  const captureInlineSnapshot = async (fieldId) => {
-    const videoElement = document.getElementById(`video-preview-${fieldId}`);
-    if (!videoElement) return;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = videoElement.videoWidth;
-    canvas.height = videoElement.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-
-    const updatedAnswers = { ...answers, [fieldId]: dataUrl };
-    setAnswers(updatedAnswers);
-    localStorage.setItem(`reg_answers_${event?.id}`, JSON.stringify(updatedAnswers));
-
-    if (cameraStream) {
-      cameraStream.getTracks().forEach(track => track.stop());
-    }
-    setCameraStream(null);
-    setActiveCameraField(null);
-
-    // Trigger background Supabase storage upload using the base64 blob
-    try {
-      setAnswers(prev => ({ ...prev, [`uploading_${fieldId}`]: true }));
-      
-      const fileExt = 'jpg';
-      const fileName = `${Math.random()}_${Date.now()}.${fileExt}`;
-      const filePath = `student-uploads/${fileName}`;
-
-      const base64Data = dataUrl.split(',')[1];
-      const blob = await fetch(`data:image/jpeg;base64,${base64Data}`).then(res => res.blob());
-
-      const { error: uploadError } = await supabase.storage
-        .from('event-materials')
-        .upload(filePath, blob, { contentType: 'image/jpeg', upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('event-materials')
-        .getPublicUrl(filePath);
-
-      const finalAnswers = JSON.parse(localStorage.getItem(`reg_answers_${event?.id}`) || '{}');
-      finalAnswers[fieldId] = publicUrl;
-      localStorage.setItem(`reg_answers_${event?.id}`, JSON.stringify(finalAnswers));
-      setAnswers(finalAnswers);
-
-    } catch (err) {
-      console.error("Background sync failed, fallback string kept safe:", err.message);
-    } finally {
-      setAnswers(prev => ({ ...prev, [`uploading_${fieldId}`]: false }));
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -763,57 +617,53 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
                                 className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs resize-none"
                               />
                             ) : field.type === 'file' ? (
-                              /* PERSISTENT INLINE CAMERA VIEWPORT CAPTURE LAYOUT */
+                              /* DEEP-LINKED GOOGLE DRIVE INTEGRATION MODULE */
                               <div className="flex flex-col gap-2 w-full mt-2 text-left" onClick={(e) => e.stopPropagation()}>
-                                <div className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col gap-3">
+                                <div className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col gap-4">
                                   
-                                  {/* ACTIVE STREAM VIEW: Appears only when user clicks to take a photo */}
-                                  {activeCameraField === field.id && (
-                                    <div className="w-full rounded-xl overflow-hidden bg-black border relative aspect-video flex items-center justify-center">
-                                      <video id={`video-preview-${field.id}`} autoPlay playsInline className="w-full h-full object-cover" />
-                                      <button
-                                        type="button"
-                                        onClick={() => captureInlineSnapshot(field.id)}
-                                        className="absolute bottom-3 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg border border-blue-500 active:scale-95 transition-transform"
-                                      >
-                                        📸 Capture Document Frame
-                                      </button>
-                                    </div>
-                                  )}
-
-                                  {/* PREVIEW CONTAINER */}
-                                  <div className="flex items-center justify-between gap-4">
-                                    <div className="flex-1">
-                                      {answers[field.id] ? (
-                                        <div className="flex flex-col gap-1">
-                                          <span className="text-xs font-bold text-emerald-600">✓ Image Document Captured</span>
-                                          <img src={answers[field.id]} alt="Captured snapshot" className="w-16 h-12 rounded border object-cover bg-white" />
-                                        </div>
-                                      ) : (
-                                        <span className="text-xs text-slate-400 italic">No asset captured yet</span>
-                                      )}
+                                  {/* STEP 1: LAUNCH NATIVE DEVICE GOOGLE DRIVE OVERLAY */}
+                                  <div className="flex items-center justify-between gap-4 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+                                    <div className="flex flex-col">
+                                      <span className="text-xs font-bold text-slate-700">Step 1: Upload to Google Drive</span>
+                                      <span className="text-[11px] text-slate-400">Launches your Drive app to save the file safely.</span>
                                     </div>
 
-                                    {activeCameraField !== field.id && (
-                                      <button
-                                        type="button"
-                                        onClick={() => startInlineCamera(field.id)}
-                                        className="text-xs font-bold bg-white text-blue-600 hover:bg-blue-50 px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm"
-                                      >
-                                        {answers[field.id] ? '🔄 Retake Snapshot' : '📷 Take Snapshot'}
-                                      </button>
-                                    )}
+                                    <a
+                                      href="googledrive://root"
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      onClick={() => {
+                                        // Fallback mechanism: If deep-linking fails or they are on desktop, open standard web browser Drive
+                                        setTimeout(() => {
+                                          window.open("https://drive.google.com", "_blank");
+                                        }, 500);
+                                      }}
+                                      className="text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 px-4 py-2.5 rounded-xl border border-blue-200 shadow-sm transition-all text-center flex items-center gap-1.5"
+                                    >
+                                      🤖 Open Drive App
+                                    </a>
                                   </div>
+
+                                  {/* STEP 2: PASTE SECURED SHAREABLE URL INSIDE FORM CONTAINER */}
+                                  <div className="flex flex-col gap-1.5 text-left">
+                                    <span className="text-[11px] font-bold text-slate-500">Step 2: Paste Shareable File Link Here</span>
+                                    <input
+                                      type="url"
+                                      placeholder="https://drive.google.com/file/d/..."
+                                      value={answers[field.id] || ''}
+                                      onChange={(e) => {
+                                        const updated = { ...answers, [field.id]: e.target.value };
+                                        setAnswers(updated);
+                                        localStorage.setItem(`reg_answers_${event?.id}`, JSON.stringify(updated));
+                                      }}
+                                      className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-500 shadow-inner"
+                                    />
+                                    <span className="text-[10px] text-slate-400 italic px-1">
+                                      ⚠️ Note: Make sure the link access is set to "Anyone with the link" so organizers can view it.
+                                    </span>
+                                  </div>
+
                                 </div>
-                                {answers[field.id] && (
-                                  <div className="text-[10px] text-gray-400 truncate max-w-xs pl-2">
-                                    {answers[field.id].startsWith('data:') ? (
-                                      <span className="text-slate-500 italic">Temporary Base64 cached copy</span>
-                                    ) : (
-                                      <>Url: <a href={answers[field.id]} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">{answers[field.id]}</a></>
-                                    )}
-                                  </div>
-                                )}
                               </div>
                             ) : (
                               <input
