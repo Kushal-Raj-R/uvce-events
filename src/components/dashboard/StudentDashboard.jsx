@@ -496,9 +496,9 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
   console.log("Active User Registrations Stream:", myRegistrations);
 
   return (
-    <div className="min-h-screen flex bg-slate-50 font-sans">
+    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row w-full overflow-x-hidden font-sans">
       {/* Left Sidebar */}
-      <aside className="w-64 bg-white border-r border-slate-200 flex flex-col justify-between p-6 shrink-0">
+      <aside className="hidden md:flex w-64 bg-white border-r border-slate-200 flex-col justify-between p-6 shrink-0">
         <div className="space-y-8">
           {/* Sidebar Brand Logo */}
           <div>
@@ -603,8 +603,76 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
         </div>
       </aside>
 
+      {/* MOBILE BOTTOM NAVIGATION BAR - Only visible on mobile screens (md:hidden) */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-2 py-2 shadow-lg flex justify-around items-center z-50 md:hidden pb-safe">
+        {/* Option 1: Dashboard */}
+        <button 
+          onClick={() => setActiveTab('dashboard')}
+          className={`flex flex-col items-center gap-1 p-2 transition-all ${
+            activeTab === 'dashboard' ? 'text-primary-500 font-semibold' : 'text-slate-500'
+          }`}
+        >
+          <DashboardIcon className="w-5 h-5" />
+          <span className="text-[10px]">Home</span>
+        </button>
+
+        {/* Option 2: Upcoming Events */}
+        <button 
+          onClick={() => setActiveTab('upcoming')}
+          className={`flex flex-col items-center gap-1 p-2 transition-all ${
+            activeTab === 'upcoming' ? 'text-primary-500 font-semibold' : 'text-slate-500'
+          }`}
+        >
+          <Calendar className="w-5 h-5" />
+          <span className="text-[10px]">Events</span>
+        </button>
+
+        {/* Option 3: My Registrations */}
+        <button 
+          onClick={() => setActiveTab('registrations')}
+          className={`flex flex-col items-center gap-1 p-2 transition-all relative ${
+            activeTab === 'registrations' ? 'text-primary-500 font-semibold' : 'text-slate-500'
+          }`}
+        >
+          <CheckIcon className="w-5 h-5" />
+          <span className="text-[10px]">My Reg</span>
+          {activeRegistrationsCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-primary-500 text-white text-[8px] w-4 h-4 flex items-center justify-center rounded-full font-bold">
+              {activeRegistrationsCount}
+            </span>
+          )}
+        </button>
+
+        {/* Option 4: Friends */}
+        <button 
+          onClick={() => setActiveTab('friends')}
+          className={`flex flex-col items-center gap-1 p-2 transition-all relative ${
+            activeTab === 'friends' ? 'text-primary-500 font-semibold' : 'text-slate-500'
+          }`}
+        >
+          <UserIcon className="w-5 h-5" />
+          <span className="text-[10px]">Friends</span>
+          {pendingInvites.length > 0 && (
+            <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[8px] w-4 h-4 flex items-center justify-center rounded-full font-bold animate-pulse">
+              {pendingInvites.length}
+            </span>
+          )}
+        </button>
+
+        {/* Option 5: Profile Settings */}
+        <button 
+          onClick={() => setActiveTab('profile')}
+          className={`flex flex-col items-center gap-1 p-2 transition-all ${
+            activeTab === 'profile' ? 'text-primary-500 font-semibold' : 'text-slate-500'
+          }`}
+        >
+          <GraduationCap className="w-5 h-5" />
+          <span className="text-[10px]">Profile</span>
+        </button>
+      </div>
+
       {/* Main Container */}
-      <main className="flex-grow flex flex-col min-w-0">
+      <main className="flex-grow flex flex-col min-w-0 pb-24 md:pb-6 transition-all duration-200">
         {/* Header Bar */}
         <header className="h-20 bg-white border-b border-slate-200 px-8 flex items-center justify-between shrink-0">
           <div>

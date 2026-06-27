@@ -417,7 +417,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
   });
 
   return (
-    <div className="min-h-screen flex bg-slate-50 font-sans">
+    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row w-full overflow-x-hidden font-sans">
       {/* Left Sidebar */}
       <aside className="hidden md:flex w-64 bg-white border-r border-slate-200 flex-col justify-between p-6 shrink-0">
         <div className="space-y-8">
@@ -540,7 +540,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
       </div>
 
       {/* Main Container */}
-      <main className="flex-grow flex flex-col min-w-0 pb-20 md:pb-0">
+      <main className="flex-grow flex flex-col min-w-0 pb-24 md:pb-6 transition-all duration-200">
         {/* Header Bar */}
         <header className="h-20 bg-white border-b border-slate-200 px-8 flex items-center justify-between shrink-0">
           <div>
