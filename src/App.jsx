@@ -13,32 +13,13 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Check current session on mount
-    async function checkSession() {
-      setLoading(true);
-      const { data } = await supabase.auth.getSession();
-      if (data?.session) {
-        setSession(data.session);
-        setUser(data.session.user);
-        await resolveUserRole(data.session.user);
-      } else {
-        setSession(null);
-        setUser(null);
-        setRole(null);
-        setDbRole(null);
-      }
-      setLoading(false);
-    }
-
-    checkSession();
-
-    // 2. Setup auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-      setLoading(true);
-      if (newSession) {
-        setSession(newSession);
-        setUser(newSession.user);
-        await resolveUserRole(newSession.user, event);
+    // 1. Get the initial session quietly without forcing a route path shift
+    setLoading(true);
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        setSession(session);
+        setUser(session.user);
+        await resolveUserRole(session.user);
       } else {
         setSession(null);
         setUser(null);
@@ -48,9 +29,37 @@ export default function App() {
       setLoading(false);
     });
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    // 2. Safely capture state mutations without triggering a cold boot reload
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+      console.log(`🔑 Auth Event Fired: ${event}`);
+      
+      // Check if the update is just a profile change/token update
+      if (event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
+        console.log("🛡️ Profile modification or token refresh detected. Blocking page refresh.");
+        setSession(currentSession);
+        if (currentSession?.user) {
+          setUser(currentSession.user);
+        }
+        // STOP HERE: Do not navigate, do not refresh, do not alter routing location states!
+        return; 
+      }
+
+      // Only handle strict sign-in or sign-out mutations
+      setLoading(true);
+      if (event === 'SIGNED_IN' && currentSession) {
+        setSession(currentSession);
+        setUser(currentSession.user);
+        await resolveUserRole(currentSession.user, event);
+      } else if (event === 'SIGNED_OUT') {
+        setSession(null);
+        setUser(null);
+        setRole(null);
+        setDbRole(null);
+      }
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   // Fetch the role of the user from public.profiles
