@@ -52,7 +52,8 @@ function createMockClient() {
           role: 'organizer',
           updated_at: new Date().toISOString(),
           email: 'organizer@university.edu',
-          club_name: 'IEEE'
+          club_name: 'IEEE',
+          friend_code: 'organi12'
         },
         {
           id: 'student-uuid-2222',
@@ -63,7 +64,20 @@ function createMockClient() {
           phone: '+91 87654 32109',
           role: 'student',
           updated_at: new Date().toISOString(),
-          email: 'student@university.edu'
+          email: 'student@university.edu',
+          friend_code: 'adity123'
+        },
+        {
+          id: 'student-uuid-3333',
+          full_name: 'Rahul Verma',
+          roll_number: '1UV22CS002',
+          branch: 'Computer Science',
+          semester: '6th Semester',
+          phone: '+91 99999 88888',
+          role: 'student',
+          updated_at: new Date().toISOString(),
+          email: 'rahul@university.edu',
+          friend_code: 'rahul456'
         }
       ];
       localStorage.setItem('mock_profiles', JSON.stringify(defaultProfiles));
@@ -72,7 +86,7 @@ function createMockClient() {
       try {
         const currentProfiles = JSON.parse(localStorage.getItem('mock_profiles') || '[]');
         let modified = false;
-        const updated = currentProfiles.map(p => {
+        currentProfiles.forEach(p => {
           if (p.id === 'organizer-uuid-1111') {
             if (!p.email) {
               p.email = 'organizer@university.edu';
@@ -83,14 +97,45 @@ function createMockClient() {
               modified = true;
             }
           }
-          if (p.id === 'student-uuid-2222' && !p.email) {
-            p.email = 'student@university.edu';
+          if (p.id === 'student-uuid-2222') {
+            if (!p.email) {
+              p.email = 'student@university.edu';
+              modified = true;
+            }
+            if (!p.friend_code) {
+              p.friend_code = 'adity123';
+              modified = true;
+            }
+          }
+          if (p.id === 'student-uuid-3333') {
+            if (!p.friend_code) {
+              p.friend_code = 'rahul456';
+              modified = true;
+            }
+          }
+          if (!p.friend_code) {
+            p.friend_code = Math.random().toString(36).substr(2, 8);
             modified = true;
           }
-          return p;
         });
+        let hasRahul = currentProfiles.some(p => p.id === 'student-uuid-3333');
+        if (!hasRahul) {
+          currentProfiles.push({
+            id: 'student-uuid-3333',
+            full_name: 'Rahul Verma',
+            roll_number: '1UV22CS002',
+            branch: 'Computer Science',
+            semester: '6th Semester',
+            phone: '+91 99999 88888',
+            role: 'student',
+            updated_at: new Date().toISOString(),
+            email: 'rahul@university.edu',
+            friend_code: 'rahul456'
+          });
+          modified = true;
+        }
         if (modified) {
-          localStorage.setItem('mock_profiles', JSON.stringify(updated));
+          localStorage.setItem('mock_profiles', JSON.stringify(currentProfiles));
         }
       } catch (e) {
         console.error('Failed to run mock profiles migration:', e);
@@ -103,9 +148,11 @@ function createMockClient() {
           id: 'event-uuid-1',
           title: 'Data Science Summit',
           description: 'A comprehensive symposium detailing advanced techniques in machine learning, neural networks, and big data visualization. Join industry experts for hands-on labs.',
-          date: new Date(Date.now() + 86400000 * 5).toISOString(), // 5 days from now
           location_type: 'Hybrid',
-          banner_url: 'https://images.unsplash.com/photo-1527689368864-3a821dbccc34?auto=format&fit=crop&w=800&q=80',
+          participation_type: 'Solo',
+          min_team_size: 1,
+          max_team_size: 1,
+          banner_path: 'https://images.unsplash.com/photo-1527689368864-3a821dbccc34?auto=format&fit=crop&w=800&q=80',
           organizer_id: 'organizer-uuid-1111',
           status: 'OPEN',
           custom_fields: [
@@ -113,59 +160,132 @@ function createMockClient() {
             { id: 'dietary', label: 'Dietary Requirements', type: 'text' }
           ],
           created_at: new Date().toISOString(),
-          club_category: 'IEEE'
+          club_category: 'IEEE',
+          registration_deadline: new Date(Date.now() + 86400000 * 2).toISOString(),
+          event_start_date: new Date(Date.now() + 86400000 * 5).toISOString(),
+          duration_days: 2
         },
         {
           id: 'event-uuid-2',
           title: 'AI Ethics Workshop',
           description: 'Discuss the societal, legal, and engineering implications of artificial intelligence. Topics include algorithmic bias, alignment, and open-source models.',
-          date: new Date(Date.now() + 86400000 * 15).toISOString(), // 15 days from now
           location_type: 'Virtual',
-          banner_url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80',
+          participation_type: 'Solo',
+          min_team_size: 1,
+          max_team_size: 1,
+          banner_path: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80',
           organizer_id: 'organizer-uuid-1111',
           status: 'OPEN',
           custom_fields: [
             { id: 'github_handle', label: 'GitHub Username', type: 'text' }
           ],
           created_at: new Date().toISOString(),
-          club_category: 'GDG'
+          club_category: 'GDG',
+          registration_deadline: new Date(Date.now() + 86400000 * 10).toISOString(),
+          event_start_date: new Date(Date.now() + 86400000 * 15).toISOString(),
+          duration_days: 1
         },
         {
           id: 'event-uuid-3',
           title: 'Micro-Credentials Lab',
           description: 'Earn hands-on micro-credentials in Cloud Engineering and Serverless architectures. Requires pre-requisite knowledge of JavaScript and basic terminal commands.',
-          date: new Date(Date.now() - 86400000 * 2).toISOString(), // 2 days ago
           location_type: 'In-Person',
-          banner_url: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=800&q=80',
+          participation_type: 'Solo',
+          min_team_size: 1,
+          max_team_size: 1,
+          banner_path: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=800&q=80',
           organizer_id: 'organizer-uuid-1111',
           status: 'CLOSED',
           custom_fields: [],
           created_at: new Date().toISOString(),
-          club_category: 'IEEE'
+          club_category: 'IEEE',
+          registration_deadline: new Date(Date.now() - 86400000 * 5).toISOString(),
+          event_start_date: new Date(Date.now() - 86400000 * 2).toISOString(),
+          duration_days: 1
         },
         {
           id: 'event-uuid-4',
           title: 'Blockchain in Ed',
           description: 'Exploring decentralization in higher education record systems. Prototype smart contract templates for verifiable student credentials.',
-          date: new Date(Date.now() + 86400000 * 30).toISOString(),
           location_type: 'In-Person',
-          banner_url: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=800&q=80',
+          participation_type: 'Solo',
+          min_team_size: 1,
+          max_team_size: 1,
+          banner_path: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=800&q=80',
           organizer_id: 'organizer-uuid-1111',
           status: 'DRAFT',
           custom_fields: [],
           created_at: new Date().toISOString(),
-          club_category: 'GDG'
+          club_category: 'GDG',
+          registration_deadline: new Date(Date.now() + 86400000 * 25).toISOString(),
+          event_start_date: new Date(Date.now() + 86400000 * 30).toISOString(),
+          duration_days: 3
         }
       ];
       localStorage.setItem('mock_events', JSON.stringify(defaultEvents));
     } else {
-      // Migrate existing mock events to have club_category for testing convenience
+      // Migrate existing mock events to have club_category and timeline fields for testing convenience
       try {
         const currentEvents = JSON.parse(localStorage.getItem('mock_events') || '[]');
         let modified = false;
         const updated = currentEvents.map(e => {
           if (!e.club_category) {
             e.club_category = e.id === 'event-uuid-2' || e.id === 'event-uuid-4' ? 'GDG' : 'IEEE';
+            modified = true;
+          }
+          if (e.max_file_size_mb !== undefined) {
+            delete e.max_file_size_mb;
+            modified = true;
+          }
+          if (e.banner_url !== undefined) {
+            e.banner_path = e.banner_url;
+            delete e.banner_url;
+            modified = true;
+          }
+          if (e.registration_deadline === undefined || e.registration_deadline.indexOf('T') === -1) {
+            const eventDate = new Date(e.date || Date.now());
+            const deadlineDate = new Date(eventDate.getTime() - 86400000 * 5);
+            e.registration_deadline = deadlineDate.toISOString();
+            modified = true;
+          }
+          if (e.event_start_date === undefined || e.event_start_date.indexOf('T') === -1) {
+            e.event_start_date = new Date(e.date || Date.now()).toISOString();
+            modified = true;
+          }
+          if (e.duration_days === undefined) {
+            e.duration_days = 1;
+            modified = true;
+          }
+          if (e.participation_type === undefined) {
+            e.participation_type = 'Solo';
+            modified = true;
+          }
+          if (e.min_team_size === undefined) {
+            e.min_team_size = e.participation_type === 'Team' ? 1 : 1;
+            modified = true;
+          }
+          if (e.max_team_size === undefined) {
+            e.max_team_size = e.participation_type === 'Team' ? 3 : 1;
+            modified = true;
+          }
+          if (e.date !== undefined) {
+            delete e.date;
+            modified = true;
+          }
+          if (e.attachment_url === undefined) {
+            e.attachment_url = null;
+            modified = true;
+          }
+          if (e.custom_notice_text === undefined) {
+            e.custom_notice_text = null;
+            modified = true;
+          }
+          if (e.event_time === undefined) {
+            e.event_time = null;
+            modified = true;
+          }
+          if (e.allow_submissions === undefined) {
+            e.allow_submissions = true;
             modified = true;
           }
           return e;
@@ -185,10 +305,41 @@ function createMockClient() {
           event_id: 'event-uuid-1',
           student_id: 'student-uuid-2222',
           custom_answers: { tshirt_size: 'L', dietary: 'Vegetarian' },
+          solution_url: null,
           created_at: new Date().toISOString()
         }
       ];
       localStorage.setItem('mock_registrations', JSON.stringify(defaultRegistrations));
+    } else {
+      try {
+        const regs = JSON.parse(localStorage.getItem('mock_registrations'));
+        let modified = false;
+        const updated = regs.map(r => {
+          if (r.solution_url === undefined) {
+            r.solution_url = null;
+            modified = true;
+          }
+          return r;
+        });
+        if (modified) {
+          localStorage.setItem('mock_registrations', JSON.stringify(updated));
+        }
+      } catch (e) {
+        console.error('Failed to run mock registrations migration:', e);
+      }
+    }
+
+    if (!localStorage.getItem('mock_connections')) {
+      const defaultConnections = [
+        {
+          id: 'conn-uuid-1',
+          sender_id: 'student-uuid-2222',
+          receiver_id: 'student-uuid-3333',
+          status: 'ACCEPTED',
+          created_at: new Date().toISOString()
+        }
+      ];
+      localStorage.setItem('mock_connections', JSON.stringify(defaultConnections));
     }
   };
 
@@ -237,7 +388,8 @@ function createMockClient() {
           phone: metadata.phone || '',
           role: metadata.role || 'student',
           updated_at: new Date().toISOString(),
-          email // save email on mock profile for auth simulation
+          email, // save email on mock profile for auth simulation
+          friend_code: Math.random().toString(36).substr(2, 8)
         };
 
         profiles.push(newProfile);
@@ -246,7 +398,10 @@ function createMockClient() {
         const userObj = {
           id: userId,
           email,
-          user_metadata: metadata,
+          user_metadata: {
+            ...metadata,
+            friend_code: newProfile.friend_code
+          },
           role: metadata.role
         };
 
@@ -290,7 +445,8 @@ function createMockClient() {
               phone: '+91 99000 99000',
               role: email.includes('organizer') ? 'organizer' : 'student',
               updated_at: new Date().toISOString(),
-              email
+              email,
+              friend_code: Math.random().toString(36).substr(2, 8)
             };
             profiles.push(profile);
             setDB('mock_profiles', profiles);
@@ -306,7 +462,8 @@ function createMockClient() {
             branch: profile.branch,
             semester: profile.semester,
             phone: profile.phone,
-            role: profile.role
+            role: profile.role,
+            friend_code: profile.friend_code
           },
           role: profile.role
         };
@@ -376,6 +533,24 @@ function createMockClient() {
       }
     },
 
+    storage: {
+      from: (_bucket) => ({
+        upload: async (filePath, file) => {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          const mockUrl = URL.createObjectURL(file);
+          if (!window.mockStorage) {
+            window.mockStorage = {};
+          }
+          window.mockStorage[filePath] = mockUrl;
+          return { data: { path: filePath }, error: null };
+        },
+        getPublicUrl: (filePath) => {
+          const publicUrl = window.mockStorage?.[filePath] || `https://example.com/mock-attachments/${filePath}`;
+          return { data: { publicUrl } };
+        }
+      })
+    },
+
     from: (table) => {
       let filterCol = null;
       let filterVal = null;
@@ -392,6 +567,10 @@ function createMockClient() {
         eq: (col, val) => {
           filterCol = col;
           filterVal = val;
+          return queryBuilder;
+        },
+        or: (expr) => {
+          queryBuilder._orExpression = expr;
           return queryBuilder;
         },
         order: (col, { ascending = true } = {}) => {
@@ -442,14 +621,42 @@ function createMockClient() {
             if (filterCol && filterVal !== null) {
               result = result.filter(item => item[filterCol] === filterVal);
             }
+            if (queryBuilder._orExpression) {
+              const currentUserId = currentSession?.user?.id;
+              result = result.filter(item => item.sender_id === currentUserId || item.receiver_id === currentUserId);
+            }
             if (table === 'registrations') {
               const profiles = getDB('mock_profiles');
+              const events = getDB('mock_events');
               result = result.map(reg => {
                 const profileObj = profiles.find(p => p.id === reg.student_id) || {};
+                const eventObj = events.find(e => e.id === reg.event_id) || {};
                 return {
                   ...reg,
                   student: profileObj,
-                  profiles: profileObj
+                  profiles: profileObj,
+                  events: eventObj
+                };
+              });
+            }
+            if (table === 'connections') {
+              const profiles = getDB('mock_profiles');
+              const currentUserId = currentSession?.user?.id;
+              result = result.map(conn => {
+                const isSenderMe = conn.sender_id === currentUserId;
+                const senderProfile = profiles.find(p => p.id === conn.sender_id) || { id: conn.sender_id };
+                const receiverProfile = profiles.find(p => p.id === conn.receiver_id) || { id: conn.receiver_id };
+                
+                return {
+                  ...conn,
+                  sender_id: isSenderMe ? conn.sender_id : senderProfile,
+                  receiver_id: isSenderMe ? receiverProfile : conn.receiver_id,
+                  'profiles!sender_id': senderProfile,
+                  'profiles!receiver_id': receiverProfile,
+                  'profiles:sender_id': senderProfile,
+                  'profiles': senderProfile,
+                  'sender_profile': senderProfile,
+                  'receiver_profile': receiverProfile
                 };
               });
             }

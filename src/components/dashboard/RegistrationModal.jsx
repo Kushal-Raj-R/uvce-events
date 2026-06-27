@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { supabase, isMockMode } from '../../supabaseClient';
 import imageCompression from 'browser-image-compression';
 
-export default function RegistrationModal({ event, user, onClose, onSuccess }) {
+export default function RegistrationModal({ event, user, onClose, onSuccess, onRefresh }) {
   const [profile, setProfile] = useState(null);
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [success, setSuccess] = useState(false);
+  const [friendsList, setFriendsList] = useState([]);
+  const [selectedTeammates, setSelectedTeammates] = useState([]);
+  const [teamName, setTeamName] = useState('');
 
   useEffect(() => {
     // Fetch profile of the logged-in student to pre-fill/display
@@ -34,6 +37,45 @@ export default function RegistrationModal({ event, user, onClose, onSuccess }) {
     fetchProfile();
   }, [user]);
 
+  useEffect(() => {
+    async function fetchFriendsList() {
+      if (!user?.id) return;
+      const { data, error } = await supabase
+        .from('connections')
+        .select(`
+          id,
+          sender_id,
+          receiver_id,
+          sender_profile:profiles!sender_id(id, full_name, roll_number, branch),
+          receiver_profile:profiles!receiver_id(id, full_name, roll_number, branch)
+        `)
+        .eq('status', 'ACCEPTED')
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`);
+
+      if (error) {
+        console.error("Error fetching friends:", error.message);
+        return;
+      }
+
+      if (data) {
+        const friends = data.map(conn => {
+          // Robust check for string ID vs object mapping (e.g. in mock mode)
+          const connSenderId = (typeof conn.sender_id === 'object' && conn.sender_id !== null) ? conn.sender_id.id : conn.sender_id;
+          if (connSenderId === user.id) {
+            return conn.receiver_profile;
+          } else {
+            return conn.sender_profile;
+          }
+        }).filter(Boolean);
+        setFriendsList(friends);
+      }
+    }
+
+    if (event?.participation_type === 'Team') {
+      fetchFriendsList();
+    }
+  }, [event, user]);
+
   const handleCustomFieldChange = (fieldId, value) => {
     setAnswers(prev => ({
       ...prev,
@@ -41,16 +83,54 @@ export default function RegistrationModal({ event, user, onClose, onSuccess }) {
     }));
   };
 
+  const handleCustomFileChange = (e, questionConfig) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const fileSizeInMB = file.size / (1024 * 1024);
+    const allowedLimit = questionConfig.max_size || 2; // Fallback to 2MB if not specified
+
+    if (fileSizeInMB > allowedLimit) {
+      alert(`The file size for "${questionConfig.label}" must be under ${allowedLimit}MB. Your file is ${fileSizeInMB.toFixed(2)}MB.`);
+      e.target.value = ''; // Reset file input selection
+      return;
+    }
+    
+    // Proceed with processing or compression...
+    handleCustomFieldChange(questionConfig.id, file);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg('');
 
+    if (event.participation_type === 'Team') {
+      if (!teamName.trim()) {
+        setErrorMsg('Team Name is required.');
+        setLoading(false);
+        return;
+      }
+      const teamSize = 1 + selectedTeammates.length;
+      const minSize = event.min_team_size ?? 1;
+      const maxSize = event.max_team_size ?? 3;
+      if (teamSize < minSize) {
+        setErrorMsg(`Your team must have at least ${minSize} members.`);
+        setLoading(false);
+        return;
+      }
+      if (teamSize > maxSize) {
+        setErrorMsg(`Your team cannot exceed ${maxSize} members.`);
+        setLoading(false);
+        return;
+      }
+    }
+
     // Ensure all custom fields have answers
     const customFields = event.custom_fields || [];
     for (const field of customFields) {
       const ans = answers[field.id];
-      if (!ans || (typeof ans === 'string' && ans.trim() === '')) {
+      if (!ans || (typeof ans === 'string' && ans.trim() === '') || (Array.isArray(ans) && ans.length === 0)) {
         setErrorMsg(`Please answer the custom question: "${field.label}"`);
         setLoading(false);
         return;
@@ -65,16 +145,20 @@ export default function RegistrationModal({ event, user, onClose, onSuccess }) {
           const file = answers[field.id];
           let fileToUpload = file;
 
-          // 1. PDF Size Validation (2MB limit)
-          if (file.type === 'application/pdf' && file.size > 2 * 1024 * 1024) {
-            throw new Error(`PDF files must be smaller than 2MB. Please compress your PDF before uploading.`);
+          // 1. Size Validation based on specific field limit
+           const maxLimitMb = field.max_size || 2;
+           const maxLimitBytes = maxLimitMb * 1024 * 1024;
+
+          // PDF Size Validation
+          if (file.type === 'application/pdf' && file.size > maxLimitBytes) {
+            throw new Error(`PDF files must be smaller than ${maxLimitMb}MB. Please compress your PDF before uploading.`);
           }
 
           // 2. Image Compression
           if (file.type.startsWith('image/')) {
             try {
               const options = {
-                maxSizeMB: 0.5,
+                maxSizeMB: Math.min(0.5, maxLimitMb),
                 maxWidthOrHeight: 1280,
                 useWebWorker: true
               };
@@ -83,6 +167,11 @@ export default function RegistrationModal({ event, user, onClose, onSuccess }) {
               console.error('Image compression failed, using original file:', compressionErr);
               fileToUpload = file;
             }
+          }
+
+          // 3. Final Size Validation for all files (post-compression check)
+          if (fileToUpload.size > maxLimitBytes) {
+            throw new Error(`The file "${field.label}" exceeds the maximum limit of ${maxLimitMb}MB.`);
           }
 
           const fileExt = fileToUpload.name ? fileToUpload.name.split('.').pop() : 'png';
@@ -117,22 +206,58 @@ export default function RegistrationModal({ event, user, onClose, onSuccess }) {
       return;
     }
 
-    const registrationData = {
-      event_id: event.id,
-      student_id: user.id,
-      custom_answers: updatedAnswers
-    };
+    let registrationsToInsert = [];
+
+    if (event.participation_type === 'Team') {
+      // Primary student row
+      registrationsToInsert.push({
+        event_id: event.id,
+        student_id: user.id,
+        custom_answers: {
+          ...updatedAnswers,
+          _team_name: teamName,
+          _teammates: selectedTeammates.map(t => typeof t === 'object' ? t.full_name : t)
+        }
+      });
+
+      // Teammate rows
+      selectedTeammates.forEach(teammate => {
+        registrationsToInsert.push({
+          event_id: event.id,
+          student_id: teammate.id,
+          custom_answers: {
+            ...updatedAnswers,
+            _team_name: teamName,
+            _teammates: [
+              profile.full_name,
+              ...selectedTeammates
+                .filter(t => t.id !== teammate.id)
+                .map(t => typeof t === 'object' ? t.full_name : t)
+            ]
+          }
+        });
+      });
+    } else {
+      registrationsToInsert.push({
+        event_id: event.id,
+        student_id: user.id,
+        custom_answers: updatedAnswers
+      });
+    }
 
     const { error } = await supabase
       .from('registrations')
-      .insert(registrationData);
+      .insert(registrationsToInsert);
 
     if (error) {
-      setErrorMsg(error.message || 'Already registered or failed to register.');
+      setErrorMsg(error.message || 'One or more teammates (or you) are already registered for this event.');
       setLoading(false);
     } else {
       setSuccess(true);
       setLoading(false);
+      if (typeof onRefresh === 'function') {
+        onRefresh();
+      }
       setTimeout(() => {
         onSuccess();
       }, 2000);
@@ -196,6 +321,31 @@ export default function RegistrationModal({ event, user, onClose, onSuccess }) {
                 </div>
               )}
 
+              {/* Event Description & Timing Details */}
+              <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-3">
+                <div>
+                  <h4 className="text-[10px] font-bold text-blue-700 uppercase tracking-wider">Event Details</h4>
+                  <p className="text-xs text-slate-700 mt-1 leading-relaxed">
+                    {event?.description || "No description provided for this event."}
+                  </p>
+                </div>
+                
+                <div className="pt-2 border-t border-slate-200/50 grid grid-cols-1 sm:grid-cols-2 gap-3 text-[10px] font-semibold">
+                  <div>
+                    <span className="text-gray-400 uppercase tracking-wider block">Registration Deadline</span>
+                    <span className="font-bold text-slate-700 mt-0.5 block">
+                      {event?.registration_deadline ? new Date(event.registration_deadline).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 uppercase tracking-wider block">Event Date & Duration</span>
+                    <span className="font-bold text-primary-600 mt-0.5 block">
+                      {event?.event_start_date ? new Date(event.event_start_date).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A'} ({event?.duration_days} {event?.duration_days === 1 ? 'Day' : 'Days'})
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               {/* Student Details Summary */}
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                 <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Academic Profile Info</h4>
@@ -226,6 +376,66 @@ export default function RegistrationModal({ event, user, onClose, onSuccess }) {
                 </p>
               </div>
 
+              {/* Team Formation UI */}
+              {event.participation_type === 'Team' && (
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3">
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Form Your Team</h4>
+                    <p className="text-[11px] text-gray-400 mt-1">Provide a team name and select teammates from your accepted connections.</p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-semibold text-slate-500 uppercase">Team Name</label>
+                    <input 
+                      type="text" 
+                      value={teamName}
+                      onChange={(e) => setTeamName(e.target.value)}
+                      placeholder="Enter a creative name for your team..."
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 bg-white"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 bg-white px-3 py-1.5 rounded-lg border border-slate-100 font-semibold">
+                    <span>Required Size: <strong className="text-slate-700">{event.min_team_size || 1} - {event.max_team_size || 3} members</strong></span>
+                    <span>Current Size: <strong className={1 + selectedTeammates.length < (event.min_team_size || 1) || 1 + selectedTeammates.length > (event.max_team_size || 3) ? "text-rose-500" : "text-emerald-500"}>{1 + selectedTeammates.length}</strong></span>
+                  </div>
+                  
+                  {friendsList.length === 0 ? (
+                    <div className="text-xs text-gray-400 italic bg-white p-3 rounded-lg border border-slate-100 text-center">
+                      No accepted friend connections found. Add connections in your student hub to form teams.
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                      {friendsList.map((friend) => {
+                        if (!friend || !friend.id) return null;
+                        const isChecked = selectedTeammates.some(t => t.id === friend.id);
+                        return (
+                          <label key={friend.id} className="flex items-center gap-3 p-2 bg-white rounded-lg border border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors text-xs">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {
+                                if (isChecked) {
+                                  setSelectedTeammates(selectedTeammates.filter(t => t.id !== friend.id));
+                                } else {
+                                  setSelectedTeammates([...selectedTeammates, friend]);
+                                }
+                              }}
+                              className="rounded border-slate-300 text-primary-500 focus:ring-primary-500/20 w-4 h-4"
+                            />
+                            <div>
+                              <span className="font-semibold text-slate-700 block">{friend.full_name}</span>
+                              <span className="text-[9px] text-gray-400 block">{friend.roll_number || 'No Roll #'} • {friend.branch || 'No Dept'}</span>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Dynamic Custom Questions */}
               {customFields.length > 0 && (
                 <div className="space-y-4">
@@ -247,6 +457,51 @@ export default function RegistrationModal({ event, user, onClose, onSuccess }) {
                             <option key={opt} value={opt}>{opt}</option>
                           ))}
                         </select>
+                      ) : field.type === 'mcq' ? (
+                        field.allow_multiple ? (
+                          <div className="space-y-2 mt-1">
+                            {field.options && field.options.map((opt) => {
+                              const currentAnswers = Array.isArray(answers[field.id]) ? answers[field.id] : [];
+                              const isChecked = currentAnswers.includes(opt);
+                              return (
+                                <label key={opt} className="flex items-center gap-3 px-3 py-2.5 border border-slate-200 rounded-xl hover:bg-slate-50 transition cursor-pointer text-xs">
+                                  <input
+                                    type="checkbox"
+                                    name={field.id}
+                                    value={opt}
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      let newAnswers;
+                                      if (e.target.checked) {
+                                        newAnswers = [...currentAnswers, opt];
+                                      } else {
+                                        newAnswers = currentAnswers.filter(item => item !== opt);
+                                      }
+                                      handleCustomFieldChange(field.id, newAnswers);
+                                    }}
+                                    className="w-4 h-4 rounded text-primary-600 border-slate-300 focus:ring-primary-500"
+                                  />
+                                  <span className="text-slate-700 font-semibold">{opt}</span>
+                                </label>
+                              );
+                            })}
+                            {(!field.options || field.options.length === 0) && (
+                              <p className="text-[11px] text-gray-400 italic">No options configured for this MCQ question.</p>
+                            )}
+                          </div>
+                        ) : (
+                          <select
+                            required
+                            value={answers[field.id] || ''}
+                            onChange={(e) => handleCustomFieldChange(field.id, e.target.value)}
+                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs bg-white"
+                          >
+                            <option value="">Select an option</option>
+                            {field.options && field.options.map(opt => (
+                              <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                          </select>
+                        )
                       ) : field.type === 'text_area' ? (
                         <textarea
                           required
@@ -261,7 +516,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess }) {
                           type="file"
                           accept="application/pdf, image/*"
                           required
-                          onChange={(e) => handleCustomFieldChange(field.id, e.target.files[0])}
+                          onChange={(e) => handleCustomFileChange(e, field)}
                           className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs bg-white"
                         />
                       ) : (

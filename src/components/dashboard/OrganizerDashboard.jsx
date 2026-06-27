@@ -1,6 +1,6 @@
 // src/components/dashboard/OrganizerDashboard.jsx
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../supabaseClient';
+import { supabase, isMockMode } from '../../supabaseClient';
 import { 
   DashboardIcon, 
   SignOutIcon, 
@@ -8,14 +8,29 @@ import {
   BellIcon, 
   SettingsIcon,
   PlusIcon,
-  LinkIcon,
   SparklesIcon,
   TrashIcon,
   EditIcon,
-  DragIcon
+  DragIcon,
+  Calendar
 } from '../ui/Icons';
 import RegistrantsListModal from './RegistrantsListModal';
-const CLUB_OPTIONS = ["IEEE", "GDG"];
+import UpdateTimelineModal from './UpdateTimelineModal';
+
+const formatDateForInput = (dateStr) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return '';
+  
+  const pad = (num) => String(num).padStart(2, '0');
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
 
 export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canSwitchRole }) {
   const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'profile'
@@ -26,24 +41,54 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
 
   // Form State for Event Creation
   const [eventTitle, setEventTitle] = useState('');
-  const [eventDate, setEventDate] = useState('');
   const [locationType, setLocationType] = useState('In-Person');
+  const [participationType, setParticipationType] = useState('Solo');
+  const [minTeamSize, setMinTeamSize] = useState(1);
+  const [maxTeamSize, setMaxTeamSize] = useState(3);
   const [description, setDescription] = useState('');
   const [bannerUrl, setBannerUrl] = useState('');
   const [clubCategory, setClubCategory] = useState('IEEE');
+  const [registrationDeadline, setRegistrationDeadline] = useState('');
+  const [eventStartDate, setEventStartDate] = useState('');
+  const [durationDays, setDurationDays] = useState(1);
   const [customFields, setCustomFields] = useState([]);
+  const [editingDraftId, setEditingDraftId] = useState(null);
 
   // Form State for Adding a Custom Field
   const [showFieldBuilder, setShowFieldBuilder] = useState(false);
   const [fieldLabel, setFieldLabel] = useState('');
   const [fieldType, setFieldType] = useState('text');
   const [fieldOptions, setFieldOptions] = useState('');
+  const [fieldMaxLimit, setFieldMaxLimit] = useState(2);
 
   // Modal State
   const [selectedEventForModal, setSelectedEventForModal] = useState(null);
+  const [selectedEventForTimeline, setSelectedEventForTimeline] = useState(null);
+
+  // Materials Settings State
+  const [selectedEventId, setSelectedEventId] = useState(null);
+  const [selectedUploadFile, setSelectedUploadFile] = useState(null);
+  const [customTextNotice, setCustomTextNotice] = useState('');
+  const [allowSubmissions, setAllowSubmissions] = useState(true);
 
   // Profile State
   const [profile, setProfile] = useState({ full_name: '', branch: '', phone: '', club_name: '' });
+
+  const loadDraftIntoForm = (draft) => {
+    setEditingDraftId(draft.id);
+    setEventTitle(draft.title || '');
+    setLocationType(draft.location_type || 'In-Person');
+    setParticipationType(draft.participation_type || 'Solo');
+    setDescription(draft.description || '');
+    setBannerUrl(draft.banner_path || '');
+    setClubCategory(draft.club_category || 'IEEE');
+    setRegistrationDeadline(formatDateForInput(draft.registration_deadline));
+    setEventStartDate(formatDateForInput(draft.event_start_date));
+    setDurationDays(draft.duration_days || 1);
+    setCustomFields(draft.custom_fields || []);
+    setMinTeamSize(draft.min_team_size || 1);
+    setMaxTeamSize(draft.max_team_size || 3);
+  };
 
   useEffect(() => {
     fetchOrganizerData();
@@ -106,12 +151,14 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
       id: 'field_' + Math.random().toString(36).substr(2, 9),
       label: fieldLabel,
       type: fieldType,
-      options: fieldType === 'select' ? fieldOptions.split(',').map(o => o.trim()).filter(Boolean) : []
+      options: (fieldType === 'select' || fieldType === 'mcq') ? fieldOptions.split(',').map(o => o.trim()).filter(Boolean) : [],
+      ...(fieldType === 'file' ? { max_size: fieldMaxLimit || 2 } : {})
     };
 
     setCustomFields([...customFields, newField]);
     setFieldLabel('');
     setFieldOptions('');
+    setFieldMaxLimit(2);
     setShowFieldBuilder(false);
   };
 
@@ -119,40 +166,201 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
     setCustomFields(customFields.filter(f => f.id !== fieldId));
   };
 
-  // Launch Event
-  const handleCreateEvent = async (e, forceDraft = false) => {
-    e.preventDefault();
-    if (!eventTitle || !eventDate) {
-      alert('Event Title and Date are required.');
+  const handleAddMcqOption = (fieldId) => {
+    setCustomFields(customFields.map(field => {
+      if (field.id === fieldId) {
+        return {
+          ...field,
+          options: [...(field.options || []), '']
+        };
+      }
+      return field;
+    }));
+  };
+
+  const handleUpdateMcqOption = (fieldId, optIdx, value) => {
+    setCustomFields(customFields.map(field => {
+      if (field.id === fieldId) {
+        const newOptions = [...(field.options || [])];
+        newOptions[optIdx] = value;
+        return {
+          ...field,
+          options: newOptions
+        };
+      }
+      return field;
+    }));
+  };
+
+  const handleRemoveMcqOption = (fieldId, optIdx) => {
+    setCustomFields(customFields.map(field => {
+      if (field.id === fieldId) {
+        return {
+          ...field,
+          options: (field.options || []).filter((_, idx) => idx !== optIdx)
+        };
+      }
+      return field;
+    }));
+  };
+
+  const organizerEvents = events;
+  const fetchOrganizerEvents = fetchOrganizerData;
+
+  const handleSaveMaterialsSettings = async (eventId, file, noticeText, allowSubmissionsVal) => {
+    if (!eventId) {
+      alert("Please select an event first.");
       return;
     }
 
-    const newEvent = {
+    try {
+      // Find the current event configuration fallback url safely
+      const currentEvent = organizerEvents.find(e => String(e.id) === String(eventId));
+      let updatedUrl = currentEvent?.attachment_url || null;
+
+      // 1. Only run upload processes if a new file object is actively targeted
+      if (file) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${eventId}-${Date.now()}.${fileExt}`;
+        const filePath = `statements/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('event-attachment')
+          .upload(filePath, file, { cacheControl: '3600', upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from('event-attachment')
+          .getPublicUrl(filePath);
+
+        updatedUrl = urlData.publicUrl;
+      }
+
+      console.log("Updating database row for event ID:", eventId, { updatedUrl, noticeText, allowSubmissionsVal });
+
+      // 2. Perform table update mutation mapping parameters securely
+      const { error: updateError } = await supabase
+        .from('events')
+        .update({ 
+          attachment_url: updatedUrl,
+          custom_notice_text: noticeText || '',
+          allow_submissions: allowSubmissionsVal
+        })
+        .eq('id', eventId);
+
+      if (updateError) throw updateError;
+
+      alert("Event materials settings successfully saved and deployed!");
+      setSelectedUploadFile(null);
+      
+      if (typeof fetchOrganizerEvents === 'function') {
+        await fetchOrganizerEvents();
+      }
+    } catch (err) {
+      console.error("Detailed Mutation Error Logging Context:", err);
+      alert(`Failed to save: ${err.message || 'Check database permissions'}`);
+    }
+  };
+
+  const handleBannerUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const fileExt = file.name ? file.name.split('.').pop() : 'png';
+    const filePath = `banners/${crypto.randomUUID()}.${fileExt}`;
+
+    try {
+      if (isMockMode) {
+        // Simulate storage upload in mock mode
+        await new Promise(resolve => setTimeout(resolve, 800));
+        const publicUrl = `https://mock-storage.supabase.co/banners/${filePath}`;
+        setBannerUrl(publicUrl);
+      } else {
+        // Upload to Supabase Storage in live mode
+        const { error: uploadError } = await supabase.storage
+          .from('registration_files')
+          .upload(filePath, file);
+
+        if (uploadError) {
+          alert('Failed to upload banner: ' + uploadError.message);
+          return;
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('registration_files')
+          .getPublicUrl(filePath);
+
+        setBannerUrl(urlData.publicUrl);
+      }
+      alert('Banner image uploaded successfully!');
+    } catch (err) {
+      console.error(err);
+      alert('Banner upload failed: ' + err.message);
+    }
+  };
+
+  // Launch Event
+  const handleCreateEvent = async (e, forceDraft = false) => {
+    e.preventDefault();
+    if (!eventTitle || !eventStartDate) {
+      alert('Event Title and Event Start Date are required.');
+      return;
+    }
+
+    const eventPayload = {
       title: eventTitle,
-      date: new Date(eventDate).toISOString(),
-      location_type: locationType,
       description,
-      banner_url: bannerUrl || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80',
+      location_type: locationType,
+      participation_type: participationType,
+      club_category: clubCategory || profile.club_name || 'IEEE',
+      banner_path: bannerUrl || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80',
+      registration_deadline: registrationDeadline ? new Date(registrationDeadline).toISOString() : null,
+      event_start_date: eventStartDate ? new Date(eventStartDate).toISOString() : null,
+      duration_days: parseInt(durationDays) || 1,
+      min_team_size: participationType === 'Team' ? (parseInt(minTeamSize) || 1) : 1,
+      max_team_size: participationType === 'Team' ? (parseInt(maxTeamSize) || 3) : 1,
+      custom_fields: customFields || [],
       organizer_id: user.id,
-      custom_fields: customFields,
-      status: forceDraft ? 'DRAFT' : 'OPEN',
-      club_category: clubCategory || profile.club_name || 'IEEE'
+      status: forceDraft ? 'DRAFT' : 'OPEN'
     };
 
-    const { error } = await supabase.from('events').insert(newEvent);
+    let result;
+    if (editingDraftId) {
+      result = await supabase
+        .from('events')
+        .update(eventPayload)
+        .eq('id', editingDraftId);
+    } else {
+      result = await supabase
+        .from('events')
+        .insert(eventPayload);
+    }
+
+    const { error } = result;
 
     if (error) {
-      alert('Failed to launch event: ' + error.message);
+      alert('Failed to save event: ' + error.message);
     } else {
-      alert(forceDraft ? 'Draft saved successfully!' : 'Event registration launched successfully!');
+      alert(
+        editingDraftId
+          ? (forceDraft ? 'Draft updated successfully!' : 'Draft event launched successfully!')
+          : (forceDraft ? 'Draft saved successfully!' : 'Event registration launched successfully!')
+      );
       // Reset form
+      setEditingDraftId(null);
       setEventTitle('');
-      setEventDate('');
       setLocationType('In-Person');
+      setParticipationType('Solo');
+      setMinTeamSize(1);
+      setMaxTeamSize(3);
       setDescription('');
       setBannerUrl('');
       setCustomFields([]);
       setClubCategory(profile.club_name || 'IEEE');
+      setRegistrationDeadline('');
+      setEventStartDate('');
+      setDurationDays(1);
       // Refresh list
       fetchOrganizerData();
     }
@@ -189,6 +397,13 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
   // Statistics calculation
   const totalActiveEvents = events.filter(e => e.status === 'OPEN').length;
   const totalRegistrations = registrations.length;
+
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0,0,0,0);
+  const eventsCreatedThisMonth = events.filter(e => new Date(e.created_at) >= startOfMonth).length;
+
+
   
   // Get registration count for a specific event
   const getRegCount = (eventId) => {
@@ -218,25 +433,45 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
           <nav className="space-y-1">
             <button
               onClick={() => setActiveTab('dashboard')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+              className={`flex items-center gap-4 px-4 py-3 rounded-xl font-medium text-sm transition-all w-full text-left ${
                 activeTab === 'dashboard'
-                  ? 'bg-primary-50 text-primary-500'
+                  ? 'bg-primary-50 text-primary-500 font-semibold'
                   : 'text-gray-500 hover:bg-slate-50 hover:text-gray-800'
               }`}
             >
-              <DashboardIcon className="w-5 h-5" />
-              Event Management
+              <DashboardIcon className="w-5 h-5 flex-shrink-0" />
+              <span>Event Management</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('materials')}
+              className={`flex items-center gap-4 px-4 py-3 rounded-xl font-medium text-sm transition-all w-full text-left ${
+                activeTab === 'materials'
+                  ? 'bg-blue-50 text-blue-600 font-semibold'
+                  : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                strokeWidth="2" 
+                stroke="currentColor" 
+                className="w-5 h-5 flex-shrink-0"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+              </svg>
+              <span>Event Materials</span>
             </button>
             <button
               onClick={() => setActiveTab('profile')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+              className={`flex items-center gap-4 px-4 py-3 rounded-xl font-medium text-sm transition-all w-full text-left ${
                 activeTab === 'profile'
-                  ? 'bg-primary-50 text-primary-500'
+                  ? 'bg-primary-50 text-primary-500 font-semibold'
                   : 'text-gray-500 hover:bg-slate-50 hover:text-gray-800'
               }`}
             >
-              <SettingsIcon className="w-5 h-5" />
-              Profile Settings
+              <SettingsIcon className="w-5 h-5 flex-shrink-0" />
+              <span>Profile Settings</span>
             </button>
           </nav>
         </div>
@@ -267,7 +502,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
         <header className="h-20 bg-white border-b border-slate-200 px-8 flex items-center justify-between shrink-0">
           <div>
             <h1 className="text-xl font-bold text-slate-800">
-              {activeTab === 'profile' ? 'Organizer Profile' : 'Dashboard'}
+              {activeTab === 'profile' ? 'Organizer Profile' : activeTab === 'materials' ? 'Event Materials' : 'Dashboard'}
             </h1>
           </div>
 
@@ -334,8 +569,36 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                         <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                         </svg>
-                        <h3 className="font-bold text-slate-800 text-sm">Create Event</h3>
+                        <h3 className="font-bold text-slate-800 text-sm">
+                          {editingDraftId ? 'Edit Event Draft' : 'Create Event'}
+                        </h3>
                       </div>
+
+                      {editingDraftId && (
+                        <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-xl flex items-center justify-between text-xs animate-fade-in">
+                          <div>
+                            <span className="font-bold">Editing Draft:</span> Resuming event "<strong>{eventTitle}</strong>"
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingDraftId(null);
+                              setEventTitle('');
+                              setLocationType('In-Person');
+                              setDescription('');
+                              setBannerUrl('');
+                              setCustomFields([]);
+                              setClubCategory(profile.club_name || 'IEEE');
+                              setRegistrationDeadline('');
+                              setEventStartDate('');
+                              setDurationDays(1);
+                            }}
+                            className="text-blue-500 hover:text-blue-700 font-bold underline"
+                          >
+                            Clear Form
+                          </button>
+                        </div>
+                      )}
 
                       <form className="space-y-5" onSubmit={(e) => handleCreateEvent(e, false)}>
                         {/* Event Title */}
@@ -351,15 +614,16 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                           />
                         </div>
 
-                        {/* Date and Location Type */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Date, Location, and Participation Type */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                           <div className="space-y-1.5">
-                            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Date</label>
+                            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">REGISTRATION DEADLINE</label>
                             <input
                               type="datetime-local"
+                              name="registration_deadline"
                               required
-                              value={eventDate}
-                              onChange={(e) => setEventDate(e.target.value)}
+                              value={registrationDeadline}
+                              onChange={(e) => setRegistrationDeadline(e.target.value)}
                               className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs bg-white"
                             />
                           </div>
@@ -376,7 +640,43 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                               <option value="Hybrid">Hybrid</option>
                             </select>
                           </div>
+
+                          <div className="space-y-1.5">
+                            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Participation Type</label>
+                            <select
+                              name="participation_type"
+                              value={participationType}
+                              onChange={(e) => setParticipationType(e.target.value)}
+                              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs bg-white"
+                            >
+                              <option value="Solo">Solo (Individual)</option>
+                              <option value="Team">Team Event</option>
+                            </select>
+                          </div>
                         </div>
+
+                        {participationType === 'Team' && (
+                          <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                            <div className="space-y-1.5">
+                              <label className="block text-xs font-semibold text-slate-500 uppercase">Min Team Size</label>
+                              <input 
+                                type="number" min="1" max="10"
+                                value={minTeamSize}
+                                onChange={(e) => setMinTeamSize(parseInt(e.target.value) || 1)}
+                                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 bg-white"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="block text-xs font-semibold text-slate-500 uppercase">Max Team Size</label>
+                              <input 
+                                type="number" min="1" max="10"
+                                value={maxTeamSize}
+                                onChange={(e) => setMaxTeamSize(parseInt(e.target.value) || 3)}
+                                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 bg-white"
+                              />
+                            </div>
+                          </div>
+                        )}
 
                         {/* Description */}
                         <div className="space-y-1.5">
@@ -390,34 +690,69 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                           />
                         </div>
 
-                        {/* Banner Image URL */}
-                        <div className="space-y-1.5">
-                          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Banner Image URL</label>
-                          <div className="relative">
-                            <input
-                              type="url"
-                              placeholder="https://images.unsplash.com/..."
-                              value={bannerUrl}
-                              onChange={(e) => setBannerUrl(e.target.value)}
-                              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs"
-                            />
-                            <LinkIcon className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                          </div>
-                        </div>
+                         {/* Add Banner */}
+                         <div className="mb-4">
+                           <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                             Add Banner
+                           </label>
+                           <input 
+                             type="file" 
+                             accept="image/*"
+                             name="banner_image"
+                             onChange={handleBannerUpload}
+                             className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                           />
+                           {bannerUrl && (
+                             <div className="mt-2 h-20 rounded-xl overflow-hidden border border-slate-200 relative group max-w-xs">
+                               <img src={bannerUrl} alt="Banner Preview" className="w-full h-full object-cover" />
+                               <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                 <span className="text-[10px] text-white font-bold">Uploaded</span>
+                               </div>
+                             </div>
+                           )}
+                         </div>
 
-                        {/* Hosting Club / Category */}
-                        <div className="space-y-1.5">
-                          <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Hosting Club / Category</label>
-                          <select
-                            value={clubCategory}
-                            onChange={(e) => setClubCategory(e.target.value)}
-                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs bg-white"
-                            required
-                          >
-                            {CLUB_OPTIONS.map((club) => (
-                              <option key={club} value={club}>{club}</option>
-                            ))}
-                          </select>
+                        {/* Hosting Club and Event Timeline Grid */}
+                        <div className="space-y-4">
+                           {/* Hosting Club / Category */}
+                           <div className="flex flex-col gap-2 w-full">
+                             <label className="text-slate-500 text-xs font-semibold uppercase tracking-wider">
+                               Hosting Club / Category
+                             </label>
+                             <div className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium text-sm select-none cursor-not-allowed flex items-center shadow-inner">
+                               <span>{clubCategory || 'Loading hosting club allocation...'}</span>
+                             </div>
+                             {/* A hidden state element to ensure the data is strictly package-submitted */}
+                             <input type="hidden" name="hosting_club" value={clubCategory || ''} />
+                           </div>
+
+                          {/* Event Timeline Configuration */}
+                          <div className="space-y-2.5 pt-2 border-t border-slate-100/80">
+                            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Event Timeline Configuration</h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">Event Start Date</label>
+                                <input 
+                                  type="datetime-local" 
+                                  required
+                                  value={eventStartDate}
+                                  onChange={(e) => setEventStartDate(e.target.value)}
+                                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">Total Duration (Days)</label>
+                                <input 
+                                  type="number" 
+                                  min="1" 
+                                  required
+                                  value={durationDays}
+                                  onChange={(e) => setDurationDays(Number(e.target.value))}
+                                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                                />
+                              </div>
+                            </div>
+                          </div>
                         </div>
 
                         {/* Custom Registration Fields Builder */}
@@ -458,14 +793,33 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                                     <option value="text">Short Text</option>
                                     <option value="text_area">Text Area (Paragraph)</option>
                                     <option value="select">Dropdown Select</option>
+                                    <option value="mcq">Multiple Choice (MCQ)</option>
                                     <option value="file">File Upload (PDF/Image)</option>
                                   </select>
                                 </div>
                               </div>
 
-                              {fieldType === 'select' && (
+                              {fieldType === 'file' && (
                                 <div>
-                                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Select Options (comma-separated)</label>
+                                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Max Limit for this file (MB)</label>
+                                  <input
+                                    type="number"
+                                    min="0.1"
+                                    step="0.1"
+                                    max="50"
+                                    value={fieldMaxLimit}
+                                    onChange={(e) => setFieldMaxLimit(Number(e.target.value))}
+                                    className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white"
+                                    required
+                                  />
+                                </div>
+                              )}
+
+                              {(fieldType === 'select' || fieldType === 'mcq') && (
+                                <div>
+                                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
+                                    {fieldType === 'mcq' ? 'MCQ Options (comma-separated)' : 'Select Options (comma-separated)'}
+                                  </label>
                                   <input
                                     type="text"
                                     placeholder="e.g. S, M, L, XL"
@@ -501,23 +855,76 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                               <p className="text-[11px] text-gray-400 italic">No custom questions added yet. By default, registrations capture student name, email, branch, roll number, and phone.</p>
                             ) : (
                               customFields.map((field) => (
-                                <div key={field.id} className="bg-slate-50 border border-slate-100 px-4 py-2.5 rounded-xl flex items-center justify-between group">
-                                  <div className="flex items-center gap-3">
-                                    <DragIcon className="w-4 h-4 text-slate-300" />
-                                    <div>
-                                      <span className="text-xs font-semibold text-slate-700">{field.label}</span>
-                                      <span className="ml-2 text-[9px] font-bold uppercase px-2 py-0.5 rounded-md bg-slate-200 text-slate-500 tracking-wider">
-                                        {field.type}
-                                      </span>
+                                <div key={field.id} className="bg-slate-50 border border-slate-100 px-4 py-2.5 rounded-xl group space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                      <DragIcon className="w-4 h-4 text-slate-300" />
+                                      <div>
+                                        <span className="text-xs font-semibold text-slate-700">{field.label}</span>
+                                        <span className="ml-2 text-[9px] font-bold uppercase px-2 py-0.5 rounded-md bg-slate-200 text-slate-500 tracking-wider">
+                                          {field.type}
+                                        </span>
+                                        {field.type === 'file' && (
+                                          <span className="ml-2 text-[9px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 border border-blue-100">
+                                            Max {field.max_size || 2}MB
+                                          </span>
+                                        )}
+                                      </div>
                                     </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveField(field.id)}
+                                      className="text-gray-400 hover:text-rose-500 transition-colors"
+                                    >
+                                      <TrashIcon className="w-4 h-4" />
+                                    </button>
                                   </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemoveField(field.id)}
-                                    className="text-gray-400 hover:text-rose-500 transition-colors"
-                                  >
-                                    <TrashIcon className="w-4 h-4" />
-                                  </button>
+
+                                  {field.type === 'mcq' && (
+                                    <div className="mt-3 pl-4 border-l-2 border-blue-500 space-y-3">
+                                      {/* Single vs Multi Selection Checkbox Toggle */}
+                                      <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-600">
+                                        <input 
+                                          type="checkbox"
+                                          checked={field.allow_multiple || false}
+                                          onChange={(e) => setCustomFields(prev => prev.map(f => f.id === field.id ? { ...f, allow_multiple: e.target.checked } : f))}
+                                          className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500"
+                                        />
+                                        Allow students to select multiple options (Checkboxes)
+                                      </label>
+
+                                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">MCQ Options</label>
+                                      
+                                      {/* Loop and render existing options */}
+                                      {(field.options || []).map((option, optIdx) => (
+                                        <div key={optIdx} className="flex gap-2 items-center">
+                                          <input 
+                                            type="text" 
+                                            value={option}
+                                            placeholder={`Option ${optIdx + 1}`}
+                                            onChange={(e) => handleUpdateMcqOption(field.id, optIdx, e.target.value)}
+                                            className="flex-1 px-3 py-1 border border-slate-200 rounded-md text-xs"
+                                          />
+                                          <button 
+                                            type="button"
+                                            onClick={() => handleRemoveMcqOption(field.id, optIdx)}
+                                            className="text-red-500 text-xs font-semibold hover:underline"
+                                          >
+                                            Remove
+                                          </button>
+                                        </div>
+                                      ))}
+
+                                      {/* Add Option Trigger Link Button */}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleAddMcqOption(field.id)}
+                                        className="text-xs text-blue-600 font-bold hover:underline flex items-center gap-1 mt-1"
+                                      >
+                                        ➕ Add Option Line
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               ))
                             )}
@@ -531,13 +938,13 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                             onClick={(e) => handleCreateEvent(e, true)}
                             className="flex-1 border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold py-3 px-4 rounded-xl text-xs transition-colors"
                           >
-                            Save as Draft
+                            {editingDraftId ? 'Update Draft' : 'Save as Draft'}
                           </button>
                           <button
                             type="submit"
                             className="flex-[2] bg-primary-500 hover:bg-primary-600 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition-all text-xs"
                           >
-                            Launch Event Registration
+                            {editingDraftId ? 'Publish Event' : 'Launch Event Registration'}
                           </button>
                         </div>
                       </form>
@@ -551,18 +958,17 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Total Active</span>
                           <span className="text-3xl font-black text-slate-800">{totalActiveEvents}</span>
                           <span className="text-[10px] text-emerald-500 font-semibold flex items-center gap-0.5 mt-2">
-                            <span>▲</span> +2 this month
+                            <span>▲</span> +{eventsCreatedThisMonth} this month
                           </span>
                         </div>
 
-                        <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm flex flex-col justify-between h-32">
-                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Total Registrations</span>
-                          <span className="text-3xl font-black text-slate-800">
+                        <div className="p-6 bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between h-32">
+                          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                            Total Registrations
+                          </span>
+                          <h2 className="text-4xl font-black text-slate-800 mt-2">
                             {totalRegistrations.toLocaleString()}
-                          </span>
-                          <span className="text-[10px] text-gray-400 font-semibold mt-2">
-                            84% average capacity
-                          </span>
+                          </h2>
                         </div>
                       </div>
 
@@ -602,7 +1008,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                                       {event.title}
                                     </span>
                                     <span className="text-[10px] text-gray-400">
-                                      {new Date(event.date).toLocaleDateString()}
+                                      {event.event_start_date ? new Date(event.event_start_date).toLocaleDateString() : 'TBD'}
                                     </span>
                                   </div>
 
@@ -621,13 +1027,33 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
 
                                     {/* Action dropdown/toggles */}
                                     <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                                      <button
-                                        onClick={() => toggleEventStatus(event)}
-                                        title={event.status === 'OPEN' ? 'Close registration' : 'Open registration'}
-                                        className="p-1 hover:bg-slate-100 rounded text-slate-500"
-                                      >
-                                        <EditIcon className="w-3.5 h-3.5" />
-                                      </button>
+                                      {event.status === 'DRAFT' ? (
+                                        <button
+                                          onClick={() => loadDraftIntoForm(event)}
+                                          title="Resume Draft"
+                                          className="p-1 hover:bg-primary-50 text-primary-600 rounded flex items-center gap-1"
+                                        >
+                                          <EditIcon className="w-3.5 h-3.5 text-primary-500" />
+                                          <span className="text-[9px] font-bold">Resume</span>
+                                        </button>
+                                      ) : (
+                                        <>
+                                          <button
+                                            onClick={() => setSelectedEventForTimeline(event)}
+                                            title="Update Event Timeline"
+                                            className="p-1 hover:bg-slate-100 rounded text-slate-500"
+                                          >
+                                            <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                                          </button>
+                                          <button
+                                            onClick={() => toggleEventStatus(event)}
+                                            title={event.status === 'OPEN' ? 'Close registration' : 'Open registration'}
+                                            className="p-1 hover:bg-slate-100 rounded text-slate-500"
+                                          >
+                                            <EditIcon className="w-3.5 h-3.5" />
+                                          </button>
+                                        </>
+                                      )}
                                       <button
                                         onClick={() => handleDeleteEvent(event.id)}
                                         title="Delete Event"
@@ -759,6 +1185,153 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                   </form>
                 </div>
               )}
+
+              {activeTab === 'materials' && (
+                <div className="w-full max-w-4xl mx-auto bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden animate-fade-in">
+                  {/* Form Header */}
+                  <div className="p-6 border-b border-slate-50">
+                    <h2 className="text-xl font-bold text-slate-800">Event Materials Settings</h2>
+                    <p className="text-sm text-slate-400 mt-1">Configure and manage resource documents, problem statements, and prompt texts for active events.</p>
+                  </div>
+
+                  {/* Form Body Split Panel */}
+                  <div className="p-6 space-y-6">
+                    
+                    {/* 1. Target Event Selection Dropdown - Fixed Layout Alignment */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center pb-6 border-b border-slate-100">
+                      <div className="md:col-span-1 pr-2">
+                        <label className="block text-sm font-semibold text-slate-700">Select Event</label>
+                        <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
+                          Choose the specific active event you want to configure materials, notices, or problem statements for.
+                        </p>
+                      </div>
+                      
+                      <div className="md:col-span-2 w-full flex justify-end md:justify-start">
+                        <select 
+                          value={selectedEventId || ''} 
+                          onChange={(e) => {
+                            setSelectedEventId(e.target.value);
+                            const selected = organizerEvents.find(ev => ev.id === e.target.value);
+                            setCustomTextNotice(selected?.custom_notice_text || '');
+                            setAllowSubmissions(selected?.allow_submissions !== false);
+                          }}
+                          className="w-full max-w-md px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all cursor-pointer shadow-sm"
+                        >
+                          <option value="">-- Choose an active event --</option>
+                          {organizerEvents.map(event => (
+                            <option key={event.id} value={event.id}>
+                              {event.title}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {selectedEventId ? (
+                      <>
+                        {/* 2. File Attachment Settings Row */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start pb-6 border-b border-slate-100">
+                          <div className="md:col-span-1 pr-2">
+                            <label className="block text-sm font-semibold text-slate-700">Problem Statement / PDF</label>
+                            <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">Upload guidelines, rulebooks, or prompt criteria sheets.</p>
+                          </div>
+                          <div className="md:col-span-2 space-y-3">
+                            <div className="flex items-center gap-3">
+                              <input 
+                                type="file" 
+                                accept=".pdf" 
+                                id="settings-pdf-upload" 
+                                className="hidden" 
+                                onChange={(e) => setSelectedUploadFile(e.target.files[0])}
+                              />
+                              <label 
+                                htmlFor="settings-pdf-upload"
+                                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl cursor-pointer transition border border-slate-200 shadow-sm"
+                              >
+                                Choose Document File
+                              </label>
+                              <span className="text-xs text-slate-500 truncate max-w-xs font-mono">
+                                {selectedUploadFile ? selectedUploadFile.name : (organizerEvents.find(e => e.id === selectedEventId)?.attachment_url ? '📄 Document Attached' : 'No file chosen')}
+                              </span>
+                            </div>
+                            {organizerEvents.find(e => e.id === selectedEventId)?.attachment_url && (
+                              <a 
+                                href={organizerEvents.find(e => e.id === selectedEventId)?.attachment_url} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                className="inline-flex items-center text-xs font-semibold text-blue-600 hover:underline gap-1"
+                              >
+                                👁️ View currently uploaded PDF statement
+                              </a>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* 3. Text Announcement Notice Settings Row */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+                          <div className="md:col-span-1 pr-2">
+                            <label className="block text-sm font-semibold text-slate-700">Message to Registered Students</label>
+                            <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">Add inline instructions, hints, or venue announcements that students will see on their dashboard portal.</p>
+                          </div>
+                          <div className="md:col-span-2">
+                            <textarea 
+                              rows="4"
+                              value={customTextNotice || ''}
+                              onChange={(e) => setCustomTextNotice(e.target.value)}
+                              placeholder="Type instructions or details here (e.g., 'Bring your laptops and chargers. Report to Labs 3 on Day 1...')"
+                              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all resize-none"
+                            />
+                          </div>
+                        </div>
+
+                        {/* 4. Submissions Allowance Toggle Switch Row */}
+                        <div className="mt-6 p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                          <div>
+                            <h4 className="text-sm font-semibold text-slate-800">Enable Student Submissions</h4>
+                            <p className="text-xs text-slate-500">Allow registered students to upload their solution PDFs for this event.</p>
+                          </div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input 
+                              type="checkbox" 
+                              checked={allowSubmissions} 
+                              onChange={(e) => setAllowSubmissions(e.target.checked)}
+                              className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                          </label>
+                        </div>
+
+                        {/* Form Action Footer Bar */}
+                        <div className="p-4 bg-slate-50 rounded-b-3xl border-t border-slate-100 flex justify-end gap-3 mt-6">
+                          <button 
+                            type="button" 
+                            onClick={() => {
+                              setSelectedEventId(null);
+                              setSelectedUploadFile(null);
+                              setCustomTextNotice('');
+                              setAllowSubmissions(true);
+                            }}
+                            className="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 font-semibold text-xs rounded-xl shadow-sm transition"
+                          >
+                            Cancel
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => handleSaveMaterialsSettings(selectedEventId, selectedUploadFile, customTextNotice, allowSubmissions)}
+                            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm hover:shadow active:scale-95 transition-all"
+                          >
+                            Save Configuration
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-center py-12 text-slate-400 border border-dashed border-slate-100 rounded-2xl bg-slate-50/30">
+                        <p className="text-sm font-medium">Please select an active event from the menu drop list options above to edit configuration details.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -771,6 +1344,18 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
           onClose={() => {
             setSelectedEventForModal(null);
             fetchOrganizerData(); // Refresh registrant counts
+          }}
+        />
+      )}
+
+      {/* UPDATE TIMELINE MODAL */}
+      {selectedEventForTimeline && (
+        <UpdateTimelineModal
+          event={selectedEventForTimeline}
+          onClose={() => setSelectedEventForTimeline(null)}
+          onSuccess={() => {
+            setSelectedEventForTimeline(null);
+            fetchOrganizerData(); // Refresh list and counts
           }}
         />
       )}

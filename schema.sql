@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     semester TEXT,
     phone TEXT,
     role TEXT CHECK (role IN ('student', 'organizer')) DEFAULT 'student' NOT NULL,
+    friend_code TEXT UNIQUE,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
@@ -66,12 +67,21 @@ CREATE TABLE IF NOT EXISTS public.events (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     title TEXT NOT NULL,
     description TEXT,
-    date TIMESTAMP WITH TIME ZONE NOT NULL,
     location_type TEXT DEFAULT 'In-Person' CHECK (location_type IN ('In-Person', 'Virtual', 'Hybrid')) NOT NULL,
-    banner_url TEXT,
+    participation_type TEXT DEFAULT 'Solo' CHECK (participation_type IN ('Solo', 'Team')) NOT NULL,
+    min_team_size INT DEFAULT 1 NOT NULL,
+    max_team_size INT DEFAULT 3 NOT NULL,
+    banner_path TEXT,
     organizer_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
     custom_fields JSONB DEFAULT '[]'::jsonb NOT NULL, -- Format: [{"id": "field_id", "label": "T-Shirt Size", "type": "select", "options": ["S", "M", "L", "XL"]}]
     status TEXT DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'CLOSED', 'DRAFT')) NOT NULL,
+    registration_deadline TIMESTAMPTZ,
+    event_start_date TIMESTAMPTZ,
+    duration_days INT DEFAULT 1,
+    attachment_url TEXT,
+    custom_notice_text TEXT,
+    event_time TEXT,
+    allow_submissions BOOLEAN DEFAULT TRUE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
@@ -125,6 +135,7 @@ CREATE TABLE IF NOT EXISTS public.registrations (
     event_id UUID REFERENCES public.events(id) ON DELETE CASCADE NOT NULL,
     student_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
     custom_answers JSONB DEFAULT '{}'::jsonb NOT NULL, -- Format: {"field_id": "answer"}
+    solution_url TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     UNIQUE (event_id, student_id)
 );
@@ -152,13 +163,23 @@ USING (
   )
 );
 
--- 3b. Registrations INSERT Policy: Authenticated students can register for events
+-- 3b. Registrations INSERT Policy: Authenticated students can register for events (themselves or accepted teammates)
 CREATE POLICY "Students can register for events" 
 ON public.registrations FOR INSERT 
 WITH CHECK (
   auth.role() = 'authenticated' 
-  AND auth.uid() = student_id 
   AND public.is_student(auth.uid())
+  AND (
+    auth.uid() = student_id 
+    OR EXISTS (
+      SELECT 1 FROM public.connections
+      WHERE status = 'ACCEPTED'
+      AND (
+        (sender_id = auth.uid() AND receiver_id = student_id)
+        OR (sender_id = student_id AND receiver_id = auth.uid())
+      )
+    )
+  )
 );
 
 
@@ -168,7 +189,7 @@ WITH CHECK (
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, full_name, roll_number, branch, semester, phone, role)
+  INSERT INTO public.profiles (id, full_name, roll_number, branch, semester, phone, role, friend_code)
   VALUES (
     new.id,
     COALESCE(new.raw_user_meta_data->>'full_name', ''),
@@ -176,7 +197,8 @@ BEGIN
     COALESCE(new.raw_user_meta_data->>'branch', ''),
     COALESCE(new.raw_user_meta_data->>'semester', ''),
     COALESCE(new.raw_user_meta_data->>'phone', ''),
-    COALESCE(new.raw_user_meta_data->>'role', 'student')
+    COALESCE(new.raw_user_meta_data->>'role', 'student'),
+    SUBSTR(MD5(RANDOM()::TEXT), 1, 8)
   );
   RETURN new;
 END;
@@ -186,3 +208,24 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+
+-- ==========================================
+-- 5. CONNECTIONS TABLE & POLICIES
+-- ==========================================
+CREATE TABLE IF NOT EXISTS public.connections (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    sender_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+    receiver_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+    status TEXT DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'ACCEPTED', 'REJECTED')) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    UNIQUE(sender_id, receiver_id)
+);
+
+-- Enable Row Level Security
+ALTER TABLE public.connections ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Connections are viewable by participants" ON public.connections;
+CREATE POLICY "Connections are viewable by participants" 
+ON public.connections FOR SELECT 
+USING (auth.uid() = sender_id OR auth.uid() = receiver_id);

@@ -18,6 +18,7 @@ export default function RegistrantsListModal({ event, onClose }) {
         .select(`
           id,
           custom_answers,
+          solution_url,
           created_at,
           profiles:student_id (full_name, roll_number, branch, semester, phone, email, role)
         `)
@@ -26,7 +27,12 @@ export default function RegistrantsListModal({ event, onClose }) {
       if (error) {
         setErrorMsg(error.message || 'Failed to fetch registered students.');
       } else {
-        setRegistrations(data || []);
+        const sorted = (data || []).sort((a, b) => {
+          const nameA = (a.profiles?.full_name || '').toLowerCase();
+          const nameB = (b.profiles?.full_name || '').toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
+        setRegistrations(sorted);
       }
       setLoading(false);
     }
@@ -36,12 +42,28 @@ export default function RegistrantsListModal({ event, onClose }) {
     }
   }, [event]);
 
+  const isTeamEvent = event.participation_type === 'Team';
+
+  // Get unique teams with their solution urls
+  const uniqueTeams = [];
+  const teamNamesSeen = new Set();
+  registrations.forEach(reg => {
+    const teamName = reg.custom_answers?._team_name || 'N/A';
+    if (teamName !== 'N/A' && !teamNamesSeen.has(teamName)) {
+      teamNamesSeen.add(teamName);
+      uniqueTeams.push({
+        team_name: teamName,
+        solution_url: reg.solution_url
+      });
+    }
+  });
+
   // CSV Export handler
   const exportToCSV = () => {
     if (registrations.length === 0) return;
 
     // Define standard headers
-    let csvHeaders = ['Full Name', 'Roll Number', 'Branch', 'Semester', 'Phone', 'Registration Date'];
+    let csvHeaders = ['Full Name', 'Roll Number', 'Branch', 'Semester', 'Email', 'Phone Number', 'Team Name', 'Solution URL', 'Registration Date'];
     
     // Add custom fields as headers
     const customFields = event.custom_fields || [];
@@ -54,6 +76,7 @@ export default function RegistrantsListModal({ event, onClose }) {
     registrations.forEach(reg => {
       const student = reg.profiles || {};
       const regDate = reg.created_at ? new Date(reg.created_at).toLocaleDateString() : 'N/A';
+      const resolvedEmail = student.email || reg.student?.email || reg.profiles?.email_address || reg.student?.email_address || 'Pending sync';
       
       // Standard values (escaped for safety)
       const values = [
@@ -61,13 +84,19 @@ export default function RegistrantsListModal({ event, onClose }) {
         `"${student.roll_number || ''}"`,
         `"${student.branch || ''}"`,
         `"${student.semester || ''}"`,
+        `"${resolvedEmail}"`,
         `"${student.phone || ''}"`,
+        `"${reg.custom_answers?._team_name || 'N/A'}"`,
+        `"${reg.solution_url || 'N/A'}"`,
         `"${regDate}"`
       ];
 
       // Custom answers values
       customFields.forEach(field => {
-        const answer = reg.custom_answers?.[field.id] || '';
+        let answer = reg.custom_answers?.[field.id] || '';
+        if (Array.isArray(answer)) {
+          answer = answer.join(', ');
+        }
         values.push(`"${answer.replace(/"/g, '""')}"`);
       });
 
@@ -144,7 +173,8 @@ export default function RegistrantsListModal({ event, onClose }) {
               </p>
             </div>
           ) : (
-            <div className="w-full overflow-x-auto border border-slate-100 rounded-xl shadow-sm">
+            <>
+              <div className="w-full overflow-x-auto border border-slate-100 rounded-xl shadow-sm">
               <table className="min-w-full text-left border-collapse divide-y divide-slate-100">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-100 text-xs font-bold text-gray-400 tracking-wider">
@@ -154,10 +184,14 @@ export default function RegistrantsListModal({ event, onClose }) {
                     <th className="py-3 px-4 min-w-[110px] whitespace-normal break-words">Semester</th>
                     <th className="py-3 px-4 min-w-[180px] whitespace-normal break-words">Email</th>
                     <th className="py-3 px-4 min-w-[130px] whitespace-normal break-words">Phone Number</th>
+                    {isTeamEvent && (
+                      <th className="py-3 px-4 min-w-[120px] whitespace-normal break-words">Team Name</th>
+                    )}
                     {event.custom_fields && event.custom_fields.map(field => (
                       <th key={field.id} className="py-3 px-4 min-w-[150px] max-w-xs whitespace-normal break-words">{field.label}</th>
                     ))}
-                    <th className="py-3 px-4 text-right min-w-[120px] whitespace-normal break-words">Reg Date</th>
+                    <th className="py-3 px-4 min-w-[130px] whitespace-normal break-words">Solution PDF</th>
+                    <th className="py-3 px-4 text-right min-w-[120px] whitespace-normal break-words">Registration Date</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
@@ -174,6 +208,11 @@ export default function RegistrantsListModal({ event, onClose }) {
                         <td className="py-3.5 px-4 font-medium text-primary-500 min-w-[110px] whitespace-normal break-words">{student.semester || 'N/A'}</td>
                         <td className="py-3.5 px-4 text-gray-500 min-w-[180px] whitespace-normal break-words">{resolvedEmail}</td>
                         <td className="py-3.5 px-4 text-gray-500 min-w-[130px] whitespace-normal break-words">{student.phone || 'N/A'}</td>
+                        {isTeamEvent && (
+                          <td className="py-3.5 px-4 font-semibold text-slate-800 min-w-[120px] whitespace-normal break-words">
+                            {reg.custom_answers?._team_name || 'N/A'}
+                          </td>
+                        )}
                         {event.custom_fields && event.custom_fields.map(field => {
                           const answer = reg.custom_answers?.[field.id];
                           const isUrl = typeof answer === 'string' && (answer.startsWith('http://') || answer.startsWith('https://'));
@@ -189,11 +228,25 @@ export default function RegistrantsListModal({ event, onClose }) {
                                   📄 View File
                                 </a>
                               ) : (
-                                answer || <span className="text-gray-300 italic">No answer</span>
+                                Array.isArray(answer) ? answer.join(', ') : (answer || <span className="text-gray-300 italic">No answer</span>)
                               )}
                             </td>
                           );
                         })}
+                        <td className="py-3.5 px-4 font-medium min-w-[130px] whitespace-normal break-words">
+                          {reg.solution_url ? (
+                            <a 
+                              href={reg.solution_url} 
+                              target="_blank" 
+                              rel="noreferrer" 
+                              className="text-blue-600 hover:underline font-semibold inline-flex items-center gap-1"
+                            >
+                              📄 View Solution PDF
+                            </a>
+                          ) : (
+                            <span className="text-slate-400 italic">No submission yet</span>
+                          )}
+                        </td>
                         <td className="py-3.5 px-4 text-right text-gray-400 min-w-[120px] whitespace-normal break-words">
                           {reg.created_at ? new Date(reg.created_at).toLocaleDateString() : 'N/A'}
                         </td>
@@ -203,7 +256,59 @@ export default function RegistrantsListModal({ event, onClose }) {
                 </tbody>
               </table>
             </div>
-          )}
+
+            {isTeamEvent && (
+              <div className="mt-8 space-y-4 animate-fade-in">
+                <div className="border-b border-slate-100 pb-2">
+                  <h4 className="text-sm font-bold text-slate-800">Team Solutions Directory</h4>
+                  <p className="text-xs text-slate-400 mt-0.5">Quick access summary of submitted solutions grouped by team name.</p>
+                </div>
+                
+                <div className="w-full max-w-2xl overflow-x-auto border border-slate-100 rounded-xl shadow-sm bg-white">
+                  <table className="min-w-full text-left border-collapse divide-y divide-slate-100">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-100 text-xs font-bold text-gray-400 tracking-wider">
+                        <th className="py-3 px-4 min-w-[200px] whitespace-normal break-words">Team Name</th>
+                        <th className="py-3 px-4 min-w-[200px] whitespace-normal break-words">Solution PDF</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                      {uniqueTeams.length === 0 ? (
+                        <tr>
+                          <td colSpan="2" className="py-4 px-4 text-center text-slate-400 italic">
+                            No team solutions have been submitted yet.
+                          </td>
+                        </tr>
+                      ) : (
+                        uniqueTeams.map((team, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="py-3.5 px-4 font-semibold text-slate-800 min-w-[200px] whitespace-normal break-words">
+                              {team.team_name}
+                            </td>
+                            <td className="py-3.5 px-4 font-medium min-w-[200px] whitespace-normal break-words">
+                              {team.solution_url ? (
+                                <a 
+                                  href={team.solution_url} 
+                                  target="_blank" 
+                                  rel="noreferrer" 
+                                  className="text-blue-600 hover:underline font-semibold inline-flex items-center gap-1"
+                                >
+                                  📄 View Solution PDF
+                                </a>
+                              ) : (
+                                <span className="text-slate-400 italic">No submission yet</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
+        )}
         </div>
         
         {/* Footer */}

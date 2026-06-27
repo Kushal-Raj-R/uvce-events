@@ -38,7 +38,7 @@ export default function App() {
       if (newSession) {
         setSession(newSession);
         setUser(newSession.user);
-        await resolveUserRole(newSession.user);
+        await resolveUserRole(newSession.user, event);
       } else {
         setSession(null);
         setUser(null);
@@ -54,7 +54,7 @@ export default function App() {
   }, []);
 
   // Fetch the role of the user from public.profiles
-  async function resolveUserRole(authUser) {
+  async function resolveUserRole(authUser, event) {
     if (!authUser) return;
 
     // Fetch profile role
@@ -71,8 +71,12 @@ export default function App() {
       // Fallback to user metadata role
       resolvedRole = authUser.user_metadata?.role || 'student';
     }
-    setRole(resolvedRole);
     setDbRole(resolvedRole);
+    
+    // Only update view role on initialization or explicit SIGNED_IN event
+    if (!event || event === 'SIGNED_IN') {
+      setRole(resolvedRole);
+    }
   }
 
   const handleAuthSuccess = (authUser, authRole) => {
