@@ -83,7 +83,7 @@ export default function UpdateTimelineModal({ event, onClose, onSuccess }) {
 
         {/* Content */}
         <div className="p-6">
-          <div className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {errorMsg && (
               <div className="p-3 bg-rose-50 text-rose-700 border border-rose-100 rounded-xl text-xs font-semibold">
                 {errorMsg}
@@ -137,15 +137,14 @@ export default function UpdateTimelineModal({ event, onClose, onSuccess }) {
                 Cancel
               </button>
               <button
-                type="button"
-                onClick={handleSubmit}
+                type="submit"
                 disabled={loading}
                 className="bg-primary-500 hover:bg-primary-600 disabled:bg-primary-400 text-white font-semibold py-2.5 px-6 rounded-xl shadow-md transition-all text-xs flex items-center gap-2"
               >
                 {loading ? 'Updating...' : 'Save Timeline'}
               </button>
             </div>
-          </div>
+          </form>
         </div>
       </div>
     </div>

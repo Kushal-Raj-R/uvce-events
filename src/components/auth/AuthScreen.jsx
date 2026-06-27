@@ -222,7 +222,7 @@ export default function AuthScreen({ onAuthSuccess }) {
           )}
 
           {/* Form */}
-          <div className="space-y-5">
+          <form onSubmit={handleAuth} className="space-y-5">
             {activeTab === 'signup' && (
               <>
                 {/* Full Name */}
@@ -341,8 +341,7 @@ export default function AuthScreen({ onAuthSuccess }) {
 
             {/* Submit Button */}
             <button
-              type="button"
-              onClick={handleAuth}
+              type="submit"
               disabled={loading}
               className="w-full bg-primary-500 hover:bg-primary-600 disabled:bg-primary-400 text-white font-semibold py-3 px-4 rounded-xl shadow-md shadow-primary-500/10 hover:shadow-lg hover:shadow-primary-500/20 transition-all flex items-center justify-center gap-2 text-sm mt-2"
             >
@@ -357,7 +356,7 @@ export default function AuthScreen({ onAuthSuccess }) {
                 `Register as ${role === 'student' ? 'Student' : 'Organizer'}`
               )}
             </button>
-          </div>
+          </form>
 
           {/* Social login buttons - Only for Sign In screens */}
           {activeTab === 'signin' && (

@@ -12,17 +12,6 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
   const [selectedTeammates, setSelectedTeammates] = useState([]);
   const [teamName, setTeamName] = useState('');
   const [currentStep, setCurrentStep] = useState(1);
-  const fileInputRefs = React.useRef({});
-
-  useEffect(() => {
-    // 1. Tell the entire app to FREEZE background reloads while this modal is open
-    localStorage.setItem('block_global_refresh', 'true');
-    
-    return () => {
-      // 2. Safely UNFREEZE auto-refreshes when the modal is closed or submission is completed
-      localStorage.removeItem('block_global_refresh');
-    };
-  }, []);
 
   useEffect(() => {
     setCurrentStep(1);
@@ -271,7 +260,6 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
       setErrorMsg(error.message || 'One or more teammates (or you) are already registered for this event.');
       setLoading(false);
     } else {
-      localStorage.removeItem('block_global_refresh');
       setSuccess(true);
       setLoading(false);
       if (typeof onRefresh === 'function') {
@@ -342,7 +330,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
               </p>
             </div>
           ) : (
-            <div className="flex-1 flex flex-col overflow-hidden">
+            <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
               <div className="p-6 overflow-y-auto flex-1 flex flex-col gap-6">
                 {errorMsg && (
                   <div className="p-3 bg-rose-50 text-rose-700 border border-rose-100 rounded-xl text-xs font-semibold">
@@ -588,38 +576,13 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
                                 className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs resize-none"
                               />
                             ) : field.type === 'file' ? (
-                              <div className="flex items-center gap-2 text-left w-full mt-1">
-                                <input
-                                  type="file"
-                                  ref={(el) => {
-                                    if (el) fileInputRefs.current[field.id] = el;
-                                  }}
-                                  accept="application/pdf, image/*"
-                                  className="hidden"
-                                  onChange={(e) => handleCustomFileChange(e, field)}
-                                />
-                                <button
-                                  type="button" /* CRITICAL: Stops the button from behaving like a form submit trigger */
-                                  onClick={(e) => {
-                                    // Stop the event from bubbling up to any wrapping form tags
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    
-                                    // Now trigger your file picking or link launching logic safely
-                                    if (fileInputRefs.current[field.id]) {
-                                      fileInputRefs.current[field.id].click();
-                                    }
-                                  }}
-                                  className="text-xs font-bold bg-white text-blue-600 hover:bg-blue-50 px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm transition-all flex-shrink-0"
-                                >
-                                  {answers[field.id] ? '🔄 Change File' : '📤 Choose File'}
-                                </button>
-                                {answers[field.id] && (
-                                  <span className="text-[11px] font-medium text-emerald-600 truncate max-w-[180px]">
-                                    ✓ {typeof answers[field.id] === 'string' ? 'Uploaded file' : 'File selected'}
-                                  </span>
-                                )}
-                              </div>
+                              <input
+                                type="file"
+                                accept="application/pdf, image/*"
+                                required
+                                onChange={(e) => handleCustomFileChange(e, field)}
+                                className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs bg-white"
+                              />
                             ) : (
                               <input
                                 type="text"
@@ -655,7 +618,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
                     Next Step →
                   </button>
                 ) : (
-                  <button type="button" onClick={handleSubmit} disabled={loading} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl shadow-sm transition-all flex items-center gap-2">
+                  <button type="submit" disabled={loading} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl shadow-sm transition-all flex items-center gap-2">
                     {loading ? (
                       <>
                         <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
@@ -670,7 +633,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
                   </button>
                 )}
               </div>
-            </div>
+            </form>
           )}
         </div>
 

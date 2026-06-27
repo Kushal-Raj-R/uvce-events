@@ -76,7 +76,6 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, refreshCount]);
 
-
   const fetchMyRegistrations = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -1182,7 +1181,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                         </div>
 
                         {/* Add Friend Code */}
-                        <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 space-y-3">
+                        <form onSubmit={handleSendInvite} className="bg-slate-50 border border-slate-100 rounded-2xl p-5 space-y-3">
                           <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Connect with a Student</span>
                           
                           {inviteSuccess && (
@@ -1206,14 +1205,13 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                               className="flex-grow px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-mono tracking-wider"
                             />
                             <button
-                              type="button"
-                              onClick={handleSendInvite}
+                              type="submit"
                               className="bg-primary-500 hover:bg-primary-600 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-all shadow-md active:scale-95 shrink-0"
                             >
                               Send Invite
                             </button>
                           </div>
-                        </div>
+                        </form>
                       </div>
 
                       {/* Right panel: My Squad */}
@@ -1277,7 +1275,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                     </div>
                   )}
 
-                  <div className="space-y-6">
+                  <form onSubmit={handleProfileSave} className="space-y-6">
                     {/* Full Name */}
                     <div>
                       <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Full Name</label>
@@ -1351,15 +1349,14 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                     {/* Submit */}
                     <div className="pt-4 border-t border-slate-100 flex justify-end">
                       <button
-                        type="button"
-                        onClick={handleProfileSave}
+                        type="submit"
                         disabled={profileLoading}
                         className="bg-primary-500 hover:bg-primary-600 disabled:bg-primary-400 text-white font-semibold py-3 px-6 rounded-xl shadow-md transition-all text-xs"
                       >
                         {profileLoading ? 'Saving Changes...' : 'Save Profile Changes'}
                       </button>
                     </div>
-                  </div>
+                  </form>
                 </div>
               )}
             </>

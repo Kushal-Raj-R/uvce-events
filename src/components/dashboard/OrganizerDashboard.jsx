@@ -745,7 +745,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                         </div>
                       )}
 
-                      <div className="space-y-5">
+                      <form className="space-y-5" onSubmit={(e) => handleCreateEvent(e, false)}>
                         {/* Event Title */}
                         <div className="space-y-1.5">
                           <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Event Title</label>
@@ -1161,14 +1161,13 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                             {editingDraftId ? 'Update Draft' : 'Save as Draft'}
                           </button>
                           <button
-                            type="button"
-                            onClick={(e) => handleCreateEvent(e, false)}
+                            type="submit"
                             className="flex-[2] bg-primary-500 hover:bg-primary-600 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition-all text-xs"
                           >
                             {editingDraftId ? 'Publish Event' : 'Launch Event Registration'}
                           </button>
                         </div>
-                      </div>
+                      </form>
                     </div>
 
                     {/* RIGHT COLUMN: Statistics and Managed Table (5 cols) */}
@@ -1313,7 +1312,43 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                 <div className="max-w-2xl bg-white border border-slate-200/60 rounded-3xl p-8 shadow-sm animate-fade-in mx-auto">
                   <h3 className="text-lg font-bold text-slate-800 mb-6">Modify Organizer Details</h3>
                   
-                  <div className="space-y-6">
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    
+                    // 1. Update public.profiles table
+                    const { error: profileError } = await supabase
+                      .from('profiles')
+                      .update({
+                        full_name: profile.full_name,
+                        branch: profile.branch,
+                        phone: profile.phone,
+                        club_name: profile.club_name
+                      })
+                      .eq('id', user.id);
+
+                    if (profileError) {
+                      console.error('Failed to update organizer profile:', profileError);
+                      alert('Failed to update database record: ' + profileError.message);
+                      return;
+                    }
+
+                    if (profile.club_name) {
+                      setClubCategory(profile.club_name);
+                    }
+
+                    // 2. Sync full name to Supabase Auth metadata
+                    const { error: authError } = await supabase.auth.updateUser({
+                      data: { full_name: profile.full_name }
+                    });
+
+                    if (authError) {
+                      console.error('Failed to sync auth details:', authError);
+                      alert('Failed to sync authentication profile details: ' + authError.message);
+                      return;
+                    }
+
+                    alert('Profile updated successfully!');
+                  }} className="space-y-6">
                     <div>
                       <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Organizer Full Name</label>
                       <input
@@ -1361,48 +1396,13 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
 
                     <div className="pt-4 border-t border-slate-100 flex justify-end">
                       <button
-                        type="button"
-                        onClick={async () => {
-                          // 1. Update public.profiles table
-                          const { error: profileError } = await supabase
-                            .from('profiles')
-                            .update({
-                              full_name: profile.full_name,
-                              branch: profile.branch,
-                              phone: profile.phone,
-                              club_name: profile.club_name
-                            })
-                            .eq('id', user.id);
-
-                          if (profileError) {
-                            console.error('Failed to update organizer profile:', profileError);
-                            alert('Failed to update database record: ' + profileError.message);
-                            return;
-                          }
-
-                          if (profile.club_name) {
-                            setClubCategory(profile.club_name);
-                          }
-
-                          // 2. Sync full name to Supabase Auth metadata
-                          const { error: authError } = await supabase.auth.updateUser({
-                            data: { full_name: profile.full_name }
-                          });
-
-                          if (authError) {
-                            console.error('Failed to sync auth details:', authError);
-                            alert('Failed to sync authentication profile details: ' + authError.message);
-                            return;
-                          }
-
-                          alert('Profile updated successfully!');
-                        }}
+                        type="submit"
                         className="bg-primary-500 hover:bg-primary-600 text-white font-semibold py-3 px-6 rounded-xl shadow-md transition-all text-xs"
                       >
                         Save Profile Changes
                       </button>
                     </div>
-                  </div>
+                  </form>
                 </div>
               )}
 
