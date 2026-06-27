@@ -212,7 +212,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
     for (const field of customFields) {
       const ans = answers[field.id];
       if (!ans || (typeof ans === 'string' && ans.trim() === '') || (Array.isArray(ans) && ans.length === 0)) {
-        setErrorMsg(`Please answer the custom question: "${field.label}"`);
+        setErrorMsg(`Please fill out ${field.label}`);
         setLoading(false);
         return;
       }
@@ -651,28 +651,35 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
                                 className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs resize-none"
                               />
                             ) : field.type === 'file' ? (
-                              <div className="flex flex-col gap-2">
-                                <div className="flex items-center gap-3">
-                                  <label className="cursor-pointer text-xs font-semibold text-blue-600 bg-blue-50/50 hover:bg-blue-50 px-3 py-2 rounded-xl border border-blue-100 transition-all">
-                                    {answers[field.id] ? '🔄 Change File' : '📤 Choose PDF or Image'}
+                              /* PERSISTENT FILE ATTACHMENT BOX */
+                              <div className="flex flex-col gap-2 w-full mt-2 text-left">
+                                <div className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-4">
+                                  <div className="flex flex-col gap-1">
+                                    {answers[field.id] ? (
+                                      /* SUCCESS STATE: Displays perfectly even if the browser reloads or resets the input text buffer */
+                                      <span className="text-xs font-bold text-emerald-600 flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
+                                        ✓ File Saved & Uploaded Successfully
+                                      </span>
+                                    ) : (
+                                      <span className="text-xs text-slate-400 italic">
+                                        {answers[`uploading_${field.id}`] ? 'Uploading asset...' : 'No document attached yet'}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* CUSTOM STYLIZED TRIGGER BUTTON */}
+                                  <label className="cursor-pointer text-xs font-bold bg-white text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-xl border border-slate-200 shadow-sm transition-all flex-shrink-0">
+                                    {answers[field.id] ? '🔄 Change File' : '📤 Choose File'}
                                     <input
                                       type="file"
                                       accept="application/pdf, image/*"
-                                      onChange={(e) => handleCustomFileChange(e, field)}
                                       className="hidden"
+                                      onChange={(e) => handleCustomFileChange(e, field)}
                                     />
                                   </label>
-                                  {answers[`uploading_${field.id}`] && (
-                                    <span className="text-xs text-slate-400 animate-pulse">Uploading...</span>
-                                  )}
-                                  {answers[field.id] && !answers[`uploading_${field.id}`] && (
-                                    <span className="text-xs font-medium text-emerald-600 flex items-center gap-0.5">
-                                      ✓ File uploaded
-                                    </span>
-                                  )}
                                 </div>
                                 {answers[field.id] && (
-                                  <div className="text-[10px] text-gray-400 truncate max-w-xs">
+                                  <div className="text-[10px] text-gray-400 truncate max-w-xs pl-2">
                                     Url: <a href={answers[field.id]} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">{answers[field.id]}</a>
                                   </div>
                                 )}
