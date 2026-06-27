@@ -4,70 +4,20 @@ import imageCompression from 'browser-image-compression';
 
 export default function RegistrationModal({ event, user, onClose, onSuccess, onRefresh }) {
   const [profile, setProfile] = useState(null);
-  
-  // 1. Recover step progress automatically if a mobile app-switch reload occurs
-  const [currentStep, setCurrentStep] = useState(() => {
-    const savedStep = localStorage.getItem(`reg_step_${event?.id}`);
-    return savedStep ? parseInt(savedStep, 10) : 1;
-  });
-
-  // 2. Recover all text input fields, checkboxes, and selections
-  const [answers, setAnswers] = useState(() => {
-    const savedAnswers = localStorage.getItem(`reg_answers_${event?.id}`);
-    return savedAnswers ? JSON.parse(savedAnswers) : {};
-  });
-
+  const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [success, setSuccess] = useState(false);
   const [friendsList, setFriendsList] = useState([]);
   const [selectedTeammates, setSelectedTeammates] = useState([]);
   const [teamName, setTeamName] = useState('');
-
-  // 3. Keep localStorage perfectly updated whenever changes happen
-  useEffect(() => {
-    if (event?.id) {
-      localStorage.setItem(`reg_step_${event.id}`, currentStep);
-    }
-  }, [currentStep, event?.id]);
+  const [currentStep, setCurrentStep] = useState(1);
 
   useEffect(() => {
-    if (event?.id && Object.keys(answers).length > 0) {
-      localStorage.setItem(`reg_answers_${event.id}`, JSON.stringify(answers));
-    }
-  }, [answers, event?.id]);
-
-  // 4. Clear memory ONLY when the student successfully registers or closes manually
-  const clearRegistrationCache = () => {
-    if (event?.id) {
-      localStorage.removeItem(`reg_step_${event.id}`);
-      localStorage.removeItem(`reg_answers_${event.id}`);
-    }
-  };
-
-  const handleClose = () => {
-    clearRegistrationCache();
-    onClose();
-  };
-
-  useEffect(() => {
-    const savedStep = localStorage.getItem(`reg_step_${event?.id}`);
-    if (!savedStep) {
-      setCurrentStep(1);
-    }
+    setCurrentStep(1);
     setSuccess(false);
     setErrorMsg('');
   }, [event?.id]);
-
-  useEffect(() => {
-    // 1. Tell the whole app to STOP auto-refreshing when this modal turns on
-    localStorage.setItem('block_global_refresh', 'true');
-    
-    return () => {
-      // 2. Turn auto-refresh back ON when this modal closes completely
-      localStorage.removeItem('block_global_refresh');
-    };
-  }, []);
 
   useEffect(() => {
     // Fetch profile of the logged-in student to pre-fill/display
@@ -140,7 +90,22 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
     }));
   };
 
+  const handleCustomFileChange = (e, questionConfig) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
+    const fileSizeInMB = file.size / (1024 * 1024);
+    const allowedLimit = questionConfig.max_size || 2; // Fallback to 2MB if not specified
+
+    if (fileSizeInMB > allowedLimit) {
+      alert(`The file size for "${questionConfig.label}" must be under ${allowedLimit}MB. Your file is ${fileSizeInMB.toFixed(2)}MB.`);
+      e.target.value = ''; // Reset file input selection
+      return;
+    }
+    
+    // Proceed with processing or compression...
+    handleCustomFieldChange(questionConfig.id, file);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -171,16 +136,11 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
     // Ensure all custom fields have answers
     const customFields = event.custom_fields || [];
     for (const field of customFields) {
-      if (field.required ?? true) {
-        const ans = answers[field.id];
-        if (!ans || (typeof ans === 'string' && ans.trim() === '') || (Array.isArray(ans) && ans.length === 0)) {
-          setErrorMsg(field.type === 'file' 
-            ? `The field "${field.label}" is required. Please upload the requested file before submitting.`
-            : `The field "${field.label}" is required. Please answer before submitting.`
-          );
-          setLoading(false);
-          return;
-        }
+      const ans = answers[field.id];
+      if (!ans || (typeof ans === 'string' && ans.trim() === '') || (Array.isArray(ans) && ans.length === 0)) {
+        setErrorMsg(`Please answer the custom question: "${field.label}"`);
+        setLoading(false);
+        return;
       }
     }
 
@@ -305,7 +265,6 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
       if (typeof onRefresh === 'function') {
         onRefresh();
       }
-      clearRegistrationCache();
       setTimeout(() => {
         onSuccess();
       }, 2000);
@@ -346,7 +305,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
               <div className={`w-6 h-1.5 rounded-full transition-all ${currentStep === 2 ? 'bg-blue-600' : 'bg-slate-200'}`} />
             </div>
             <button
-              onClick={handleClose}
+              onClick={onClose}
               className="text-gray-400 hover:text-gray-600 transition-colors ml-2"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -617,54 +576,13 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
                                 className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs resize-none"
                               />
                             ) : field.type === 'file' ? (
-                              /* DEEP-LINKED GOOGLE DRIVE INTEGRATION MODULE */
-                              <div className="flex flex-col gap-2 w-full mt-2 text-left" onClick={(e) => e.stopPropagation()}>
-                                <div className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col gap-4">
-                                  
-                                  {/* STEP 1: LAUNCH NATIVE DEVICE GOOGLE DRIVE OVERLAY */}
-                                  <div className="flex items-center justify-between gap-4 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
-                                    <div className="flex flex-col">
-                                      <span className="text-xs font-bold text-slate-700">Step 1: Upload to Google Drive</span>
-                                      <span className="text-[11px] text-slate-400">Launches your Drive app to save the file safely.</span>
-                                    </div>
-
-                                    <a
-                                      href="googledrive://root"
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      onClick={() => {
-                                        // Fallback mechanism: If deep-linking fails or they are on desktop, open standard web browser Drive
-                                        setTimeout(() => {
-                                          window.open("https://drive.google.com", "_blank");
-                                        }, 500);
-                                      }}
-                                      className="text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 px-4 py-2.5 rounded-xl border border-blue-200 shadow-sm transition-all text-center flex items-center gap-1.5"
-                                    >
-                                      🤖 Open Drive App
-                                    </a>
-                                  </div>
-
-                                  {/* STEP 2: PASTE SECURED SHAREABLE URL INSIDE FORM CONTAINER */}
-                                  <div className="flex flex-col gap-1.5 text-left">
-                                    <span className="text-[11px] font-bold text-slate-500">Step 2: Paste Shareable File Link Here</span>
-                                    <input
-                                      type="url"
-                                      placeholder="https://drive.google.com/file/d/..."
-                                      value={answers[field.id] || ''}
-                                      onChange={(e) => {
-                                        const updated = { ...answers, [field.id]: e.target.value };
-                                        setAnswers(updated);
-                                        localStorage.setItem(`reg_answers_${event?.id}`, JSON.stringify(updated));
-                                      }}
-                                      className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-500 shadow-inner"
-                                    />
-                                    <span className="text-[10px] text-slate-400 italic px-1">
-                                      ⚠️ Note: Make sure the link access is set to "Anyone with the link" so organizers can view it.
-                                    </span>
-                                  </div>
-
-                                </div>
-                              </div>
+                              <input
+                                type="file"
+                                accept="application/pdf, image/*"
+                                required
+                                onChange={(e) => handleCustomFileChange(e, field)}
+                                className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs bg-white"
+                              />
                             ) : (
                               <input
                                 type="text"
@@ -686,7 +604,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
               {/* 3. MODAL NAVIGATION ACTION FOOTER */}
               <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
                 {currentStep === 1 ? (
-                  <button type="button" onClick={handleClose} className="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700">
+                  <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700">
                     Cancel
                   </button>
                 ) : (
