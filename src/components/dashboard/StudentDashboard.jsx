@@ -76,6 +76,33 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, refreshCount]);
 
+  // Window Focus / Visibility Sync with block_global_refresh protection
+  useEffect(() => {
+    const handleMobileWindowFocus = () => {
+      const isRegistrationFormActive = localStorage.getItem('block_global_refresh') === 'true';
+      if (isRegistrationFormActive) {
+        console.log("🔒 Registration modal is active. Global auto-refresh completely frozen.");
+        return;
+      }
+      console.log("🔄 Tab focused normally. Running background sync...");
+      fetchDashboardData();
+      fetchIncomingFriendInvites();
+      fetchConnectedFriends();
+    };
+
+    window.addEventListener('focus', handleMobileWindowFocus);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') handleMobileWindowFocus();
+    };
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleMobileWindowFocus);
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
   const fetchMyRegistrations = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();

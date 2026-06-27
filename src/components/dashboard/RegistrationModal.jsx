@@ -14,6 +14,16 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
   const [currentStep, setCurrentStep] = useState(1);
 
   useEffect(() => {
+    // 1. Tell the entire app to FREEZE background reloads while this modal is open
+    localStorage.setItem('block_global_refresh', 'true');
+    
+    return () => {
+      // 2. Safely UNFREEZE auto-refreshes when the modal is closed or submission is completed
+      localStorage.removeItem('block_global_refresh');
+    };
+  }, []);
+
+  useEffect(() => {
     setCurrentStep(1);
     setSuccess(false);
     setErrorMsg('');
@@ -260,6 +270,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
       setErrorMsg(error.message || 'One or more teammates (or you) are already registered for this event.');
       setLoading(false);
     } else {
+      localStorage.removeItem('block_global_refresh');
       setSuccess(true);
       setLoading(false);
       if (typeof onRefresh === 'function') {
