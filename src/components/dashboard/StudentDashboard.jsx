@@ -856,31 +856,15 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                   </div>
 
                   {/* Highlighted Events */}
-                  <div>
+                  <div className="mt-8">
                     <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-lg font-bold text-slate-800">Featured Events</h3>
+                      <h3 className="text-xl font-bold text-slate-800">Featured Events</h3>
                       <button 
                         onClick={() => setActiveTab('upcoming')} 
-                        className="text-primary-500 text-xs font-bold hover:underline"
+                        className="text-sm font-semibold text-blue-600 hover:underline"
                       >
                         View All
                       </button>
-                    </div>
-
-                    {/* Search Events by Club Name */}
-                    <div className="mb-6 max-w-md">
-                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                        Search Events by Club Name
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          placeholder="Search by club name..."
-                          value={clubSearchQuery}
-                          onChange={(e) => setClubSearchQuery(e.target.value)}
-                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm shadow-sm transition-all"
-                        />
-                      </div>
                     </div>
 
                     {filteredEvents.length === 0 ? (
