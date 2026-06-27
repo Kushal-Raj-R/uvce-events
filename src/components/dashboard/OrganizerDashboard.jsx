@@ -72,6 +72,9 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
   const [customTextNotice, setCustomTextNotice] = useState('');
   const [allowSubmissions, setAllowSubmissions] = useState(true);
 
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+
   // Profile State
   const [profile, setProfile] = useState({ full_name: '', branch: '', phone: '', club_name: '' });
 
@@ -615,23 +618,68 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
               </div>
             )}
 
-            <button className="text-gray-400 hover:text-gray-600 transition-colors">
-              <BellIcon className="w-5 h-5" />
-            </button>
+            {/* ================= NOTIFICATION CONTROLLER ================= */}
+            <div className="relative">
+              <button 
+                onClick={() => { setShowNotifications(!showNotifications); setShowProfileMenu(false); }}
+                className="text-gray-400 hover:text-gray-600 transition-colors relative p-1.5 rounded-full hover:bg-slate-100/50"
+              >
+                <BellIcon className="w-5 h-5" />
+              </button>
 
-            <button onClick={() => setActiveTab('profile')} className="text-gray-400 hover:text-gray-600 transition-colors">
-              <SettingsIcon className="w-5 h-5" />
-            </button>
+              {showNotifications && (
+                <>
+                  {/* Click-away backdrop to close notifications */}
+                  <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setShowNotifications(false)} />
+                  
+                  {/* Responsive position: Centered on screen width on mobile, anchored right on desktop */}
+                  <div className="absolute right-[-40px] sm:right-0 top-full mt-2 z-50 w-[85vw] max-w-xs sm:w-80 bg-white rounded-2xl shadow-xl border border-slate-100 p-4 transform origin-top-right animate-fadeIn text-left">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-2">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Notifications</span>
+                      <span className="px-2 py-0.5 text-[10px] font-bold bg-blue-50 text-blue-600 rounded-full">0 New</span>
+                    </div>
+                    <div className="py-4 text-center text-xs text-slate-400 italic">No new notifications</div>
+                  </div>
+                </>
+              )}
+            </div>
 
-            {/* Avatar Pill */}
-            <div className="flex items-center gap-2 pl-4 border-l border-slate-200">
-              <div className="w-9 h-9 bg-primary-100 text-primary-600 font-bold rounded-full flex items-center justify-center text-sm shadow-inner">
+            {/* ================= USER PROFILE DROPDOWN (YELLOW ICON ACTION) ================= */}
+            <div className="relative flex items-center gap-2 pl-4 border-l border-slate-200">
+              <button 
+                onClick={() => { setShowProfileMenu(!showProfileMenu); setShowNotifications(false); }}
+                className="w-9 h-9 rounded-full bg-primary-100 text-primary-600 font-bold text-sm flex items-center justify-center hover:bg-primary-200/60 transition-all shadow-sm cursor-pointer"
+              >
                 {profile.full_name ? profile.full_name.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
-              </div>
+              </button>
               <div className="text-left leading-none max-w-[120px] hidden md:block">
                 <span className="font-semibold text-xs text-slate-800 block truncate">{profile.full_name || 'Organizer'}</span>
                 <span className="text-[9px] text-gray-400 block mt-0.5 truncate">{profile.branch || 'Organizer Dept'}</span>
               </div>
+
+              {showProfileMenu && (
+                <>
+                  {/* Click-away backdrop to close profile menu */}
+                  <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setShowProfileMenu(false)} />
+                  
+                  {/* Profile Action Menu Content */}
+                  <div className="absolute right-0 top-full mt-2 z-50 w-48 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 transform origin-top-right animate-fadeIn">
+                    <button 
+                      onClick={() => { setActiveTab('profile'); setShowProfileMenu(false); }}
+                      className="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition-colors flex items-center gap-2"
+                    >
+                      ⚙️ Profile Settings
+                    </button>
+                    <div className="border-t border-slate-100 my-1" />
+                    <button 
+                      onClick={() => { onSignOut(); setShowProfileMenu(false); }}
+                      className="w-full text-left px-4 py-2.5 text-xs font-semibold text-red-500 hover:bg-red-50 transition-colors flex items-center gap-2"
+                    >
+                      🚪 Sign Out
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </header>
