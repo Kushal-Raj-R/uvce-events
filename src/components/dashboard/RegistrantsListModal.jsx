@@ -190,7 +190,6 @@ export default function RegistrantsListModal({ event, onClose }) {
                     {event.custom_fields && event.custom_fields.map(field => (
                       <th key={field.id} className="py-3 px-4 min-w-[150px] max-w-xs whitespace-normal break-words">{field.label}</th>
                     ))}
-                    <th className="py-3 px-4 min-w-[130px] whitespace-normal break-words">Solution PDF</th>
                     <th className="py-3 px-4 text-right min-w-[120px] whitespace-normal break-words">Registration Date</th>
                   </tr>
                 </thead>
@@ -233,20 +232,7 @@ export default function RegistrantsListModal({ event, onClose }) {
                             </td>
                           );
                         })}
-                        <td className="py-3.5 px-4 font-medium min-w-[130px] whitespace-normal break-words">
-                          {reg.solution_url ? (
-                            <a 
-                              href={reg.solution_url} 
-                              target="_blank" 
-                              rel="noreferrer" 
-                              className="text-blue-600 hover:underline font-semibold inline-flex items-center gap-1"
-                            >
-                              📄 View Solution PDF
-                            </a>
-                          ) : (
-                            <span className="text-slate-400 italic">No submission yet</span>
-                          )}
-                        </td>
+
                         <td className="py-3.5 px-4 text-right text-gray-400 min-w-[120px] whitespace-normal break-words">
                           {reg.created_at ? new Date(reg.created_at).toLocaleDateString() : 'N/A'}
                         </td>

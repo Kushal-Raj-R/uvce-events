@@ -53,6 +53,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
   const [durationDays, setDurationDays] = useState(1);
   const [customFields, setCustomFields] = useState([]);
   const [editingDraftId, setEditingDraftId] = useState(null);
+  const [documents, setDocuments] = useState([]);
 
   // Form State for Adding a Custom Field
   const [showFieldBuilder, setShowFieldBuilder] = useState(false);
@@ -88,6 +89,55 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
     setCustomFields(draft.custom_fields || []);
     setMinTeamSize(draft.min_team_size || 1);
     setMaxTeamSize(draft.max_team_size || 3);
+    setDocuments(draft.documents || []);
+  };
+
+  const addDocumentSlot = () => {
+    setDocuments(prev => [...prev, { id: Date.now(), url: '', description: '', uploading: false }]);
+  };
+
+  const updateDocumentDescription = (id, text) => {
+    setDocuments(prev => prev.map(doc => doc.id === id ? { ...doc, description: text } : doc));
+  };
+
+  const removeDocumentSlot = (id) => {
+    setDocuments(prev => prev.filter(doc => doc.id !== id));
+  };
+
+  const handleNestedFileUpload = async (e, id) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf' && !file.type.startsWith('image/')) {
+      alert("Please upload a PDF or an Image file only.");
+      return;
+    }
+
+    try {
+      setDocuments(prev => prev.map(doc => doc.id === id ? { ...doc, uploading: true } : doc));
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${id}-${Date.now()}.${fileExt}`;
+      const filePath = `documents/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('event-materials')
+        .upload(filePath, file, { cacheControl: '3600', upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('event-materials')
+        .getPublicUrl(filePath);
+
+      const publicUrl = urlData.publicUrl;
+
+      setDocuments(prev => prev.map(doc => doc.id === id ? { ...doc, url: publicUrl, uploading: false } : doc));
+    } catch (err) {
+      console.error("Document upload error:", err);
+      alert(`Upload failed: ${err.message}`);
+      setDocuments(prev => prev.map(doc => doc.id === id ? { ...doc, uploading: false } : doc));
+    }
   };
 
   useEffect(() => {
@@ -321,6 +371,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
       min_team_size: participationType === 'Team' ? (parseInt(minTeamSize) || 1) : 1,
       max_team_size: participationType === 'Team' ? (parseInt(maxTeamSize) || 3) : 1,
       custom_fields: customFields || [],
+      documents: documents || [],
       organizer_id: user.id,
       status: forceDraft ? 'DRAFT' : 'OPEN'
     };
@@ -357,6 +408,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
       setDescription('');
       setBannerUrl('');
       setCustomFields([]);
+      setDocuments([]);
       setClubCategory(profile.club_name || 'IEEE');
       setRegistrationDeadline('');
       setEventStartDate('');
@@ -542,16 +594,16 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
       {/* Main Container */}
       <main className="flex-grow flex flex-col min-w-0 pb-24 md:pb-6 transition-all duration-200">
         {/* Header Bar */}
-        <header className="h-20 bg-white border-b border-slate-200 px-8 flex items-center justify-between shrink-0">
+        <header className="h-auto py-4 sm:py-0 sm:h-20 bg-white border-b border-slate-200 px-4 sm:px-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
           <div>
-            <h1 className="text-xl font-bold text-slate-800">
+            <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight leading-tight">
               {activeTab === 'profile' ? 'Organizer Profile' : activeTab === 'materials' ? 'Event Materials' : 'Dashboard'}
             </h1>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto">
             {activeTab === 'dashboard' && (
-              <div className="relative w-64">
+              <div className="relative w-full sm:w-64">
                 <input
                   type="text"
                   placeholder="Search events..."
@@ -754,6 +806,81 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                              </div>
                            )}
                          </div>
+
+                        {/* OPTIONAL MULTI-DOCUMENT ATTACHMENT SECTION */}
+                        <div className="mt-6 p-5 bg-white border border-slate-200 rounded-2xl flex flex-col gap-4 shadow-sm">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Documents Section</h4>
+                              <p className="text-xs text-slate-500">Optional: Upload informational files or materials for this event. You can add multiple attachments.</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={addDocumentSlot}
+                              className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all flex items-center gap-1"
+                            >
+                              <span>+</span> Add Document
+                            </button>
+                          </div>
+
+                          {documents && documents.length > 0 ? (
+                            <div className="flex flex-col gap-3">
+                              {documents.map((doc) => (
+                                <div key={doc.id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row items-start sm:items-center gap-4 relative">
+                                  {/* If the document has a URL and looks like an image, render a small organizer thumbnail preview */}
+                                  {doc.url && (doc.url.match(/\.(jpeg|jpg|gif|png|webp)/i) || !doc.url.endsWith('.pdf')) && (
+                                    <div className="w-16 h-16 rounded-lg border bg-white overflow-hidden flex-shrink-0 flex items-center justify-center shadow-sm">
+                                      <img src={doc.url} alt="Preview" className="w-full h-full object-cover" />
+                                    </div>
+                                  )}
+
+                                  <div className="flex-1 w-full flex flex-col gap-1.5">
+                                    <input
+                                      type="text"
+                                      placeholder="Document description (e.g., Event Poster, Syllabus, Rulebook)"
+                                      value={doc.description}
+                                      onChange={(e) => updateDocumentDescription(doc.id, e.target.value)}
+                                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-700 text-xs focus:outline-none focus:border-blue-500"
+                                    />
+                                    
+                                    <div className="flex items-center gap-2">
+                                      <label className="cursor-pointer text-[11px] font-medium text-blue-600 bg-blue-50/50 hover:bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100 transition-all">
+                                        {doc.url ? '🔄 Change File/Image' : '📤 Choose PDF or Image File'}
+                                        <input
+                                          type="file"
+                                          accept=".pdf, image/*"
+                                          className="hidden"
+                                          onChange={(e) => handleNestedFileUpload(e, doc.id)}
+                                        />
+                                      </label>
+                                      {doc.url && (
+                                        <span className="text-[11px] font-medium text-emerald-600 flex items-center gap-0.5">
+                                          ✓ Asset attached
+                                        </span>
+                                      )}
+                                      {doc.uploading && (
+                                        <span className="text-[11px] text-slate-400 animate-pulse">Uploading...</span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => removeDocumentSlot(doc.id)}
+                                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                    title="Remove field"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="border border-dashed border-slate-200 rounded-xl p-4 text-center text-xs text-slate-400 italic">
+                              No additional documents attached. Click "Add Document" to append files.
+                            </div>
+                          )}
+                        </div>
 
                         {/* Hosting Club and Event Timeline Grid */}
                         <div className="space-y-4">

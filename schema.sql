@@ -74,6 +74,7 @@ CREATE TABLE IF NOT EXISTS public.events (
     banner_path TEXT,
     organizer_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
     custom_fields JSONB DEFAULT '[]'::jsonb NOT NULL, -- Format: [{"id": "field_id", "label": "T-Shirt Size", "type": "select", "options": ["S", "M", "L", "XL"]}]
+    documents JSONB DEFAULT '[]'::jsonb NOT NULL,
     status TEXT DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'CLOSED', 'DRAFT')) NOT NULL,
     registration_deadline TIMESTAMPTZ,
     event_start_date TIMESTAMPTZ,

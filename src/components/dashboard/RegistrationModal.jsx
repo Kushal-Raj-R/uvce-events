@@ -11,6 +11,13 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
   const [friendsList, setFriendsList] = useState([]);
   const [selectedTeammates, setSelectedTeammates] = useState([]);
   const [teamName, setTeamName] = useState('');
+  const [currentStep, setCurrentStep] = useState(1);
+
+  useEffect(() => {
+    setCurrentStep(1);
+    setSuccess(false);
+    setErrorMsg('');
+  }, [event?.id]);
 
   useEffect(() => {
     // Fetch profile of the logged-in student to pre-fill/display
@@ -281,28 +288,37 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
   const customFields = event.custom_fields || [];
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden animate-fade-in my-8">
-        {/* Header */}
-        <div className="px-6 py-4 bg-primary-50 border-b border-primary-100 flex justify-between items-center">
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-3xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
+        
+        {/* 1. PROGRESS HEADER INDICATOR */}
+        <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
           <div>
-            <h3 className="font-bold text-slate-800 text-lg">Event Registration</h3>
-            <p className="text-xs text-primary-600 font-semibold truncate max-w-[320px]">{event.title}</p>
+            <h3 className="text-base font-bold text-slate-800">
+              Event Registration — Step {currentStep} of 2
+            </h3>
+            <p className="text-xs text-primary-600 font-semibold truncate max-w-[320px] mt-0.5">{event.title}</p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-4">
+            <div className="flex gap-1">
+              <div className={`w-6 h-1.5 rounded-full transition-all ${currentStep >= 1 ? 'bg-blue-600' : 'bg-slate-200'}`} />
+              <div className={`w-6 h-1.5 rounded-full transition-all ${currentStep === 2 ? 'bg-blue-600' : 'bg-slate-200'}`} />
+            </div>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors ml-2"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
 
-        {/* Content */}
-        <div className="p-6">
+        {/* 2. SCROLLABLE FORM STEP TRACK BODY */}
+        <div className="flex-1 flex flex-col overflow-hidden bg-white">
           {success ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="p-6 overflow-y-auto flex-1 flex flex-col items-center justify-center py-8 text-center">
               <div className="w-16 h-16 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mb-4">
                 <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -314,256 +330,313 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
               </p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {errorMsg && (
-                <div className="p-3 bg-rose-50 text-rose-700 border border-rose-100 rounded-xl text-xs font-semibold">
-                  {errorMsg}
-                </div>
-              )}
+            <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+              <div className="p-6 overflow-y-auto flex-1 flex flex-col gap-6">
+                {errorMsg && (
+                  <div className="p-3 bg-rose-50 text-rose-700 border border-rose-100 rounded-xl text-xs font-semibold">
+                    {errorMsg}
+                  </div>
+                )}
 
-              {/* Event Description & Timing Details */}
-              <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-3">
-                <div>
-                  <h4 className="text-[10px] font-bold text-blue-700 uppercase tracking-wider">Event Details</h4>
-                  <p className="text-xs text-slate-700 mt-1 leading-relaxed">
-                    {event?.description || "No description provided for this event."}
-                  </p>
-                </div>
-                
-                <div className="pt-2 border-t border-slate-200/50 grid grid-cols-1 sm:grid-cols-2 gap-3 text-[10px] font-semibold">
-                  <div>
-                    <span className="text-gray-400 uppercase tracking-wider block">Registration Deadline</span>
-                    <span className="font-bold text-slate-700 mt-0.5 block">
-                      {event?.registration_deadline ? new Date(event.registration_deadline).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-400 uppercase tracking-wider block">Event Date & Duration</span>
-                    <span className="font-bold text-primary-600 mt-0.5 block">
-                      {event?.event_start_date ? new Date(event.event_start_date).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A'} ({event?.duration_days} {event?.duration_days === 1 ? 'Day' : 'Days'})
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Student Details Summary */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Academic Profile Info</h4>
-                <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs">
-                  <div>
-                    <span className="text-gray-400 block mb-0.5">Full Name</span>
-                    <span className="font-semibold text-slate-700">{profile.full_name}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-400 block mb-0.5">Roll Number</span>
-                    <span className="font-semibold text-slate-700">{profile.roll_number || 'N/A'}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-400 block mb-0.5">Branch / Course</span>
-                    <span className="font-semibold text-slate-700">{profile.branch || 'N/A'}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-400 block mb-0.5">Semester</span>
-                    <span className="font-semibold text-slate-700">{profile.semester || 'N/A'}</span>
-                  </div>
-                  <div className="col-span-2">
-                    <span className="text-gray-400 block mb-0.5">Phone Number</span>
-                    <span className="font-semibold text-slate-700">{profile.phone || 'N/A'}</span>
-                  </div>
-                </div>
-                <p className="text-[10px] text-gray-400 mt-3 pt-3 border-t border-slate-200/65">
-                  Need to update your details? Close this modal and edit your profile in the sidebar.
-                </p>
-              </div>
-
-              {/* Team Formation UI */}
-              {event.participation_type === 'Team' && (
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3">
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Form Your Team</h4>
-                    <p className="text-[11px] text-gray-400 mt-1">Provide a team name and select teammates from your accepted connections.</p>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block text-[10px] font-semibold text-slate-500 uppercase">Team Name</label>
-                    <input 
-                      type="text" 
-                      value={teamName}
-                      onChange={(e) => setTeamName(e.target.value)}
-                      placeholder="Enter a creative name for your team..."
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 bg-white"
-                      required
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between text-[10px] text-slate-500 bg-white px-3 py-1.5 rounded-lg border border-slate-100 font-semibold">
-                    <span>Required Size: <strong className="text-slate-700">{event.min_team_size || 1} - {event.max_team_size || 3} members</strong></span>
-                    <span>Current Size: <strong className={1 + selectedTeammates.length < (event.min_team_size || 1) || 1 + selectedTeammates.length > (event.max_team_size || 3) ? "text-rose-500" : "text-emerald-500"}>{1 + selectedTeammates.length}</strong></span>
-                  </div>
-                  
-                  {friendsList.length === 0 ? (
-                    <div className="text-xs text-gray-400 italic bg-white p-3 rounded-lg border border-slate-100 text-center">
-                      No accepted friend connections found. Add connections in your student hub to form teams.
-                    </div>
-                  ) : (
-                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                      {friendsList.map((friend) => {
-                        if (!friend || !friend.id) return null;
-                        const isChecked = selectedTeammates.some(t => t.id === friend.id);
-                        return (
-                          <label key={friend.id} className="flex items-center gap-3 p-2 bg-white rounded-lg border border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors text-xs">
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => {
-                                if (isChecked) {
-                                  setSelectedTeammates(selectedTeammates.filter(t => t.id !== friend.id));
-                                } else {
-                                  setSelectedTeammates([...selectedTeammates, friend]);
-                                }
-                              }}
-                              className="rounded border-slate-300 text-primary-500 focus:ring-primary-500/20 w-4 h-4"
-                            />
-                            <div>
-                              <span className="font-semibold text-slate-700 block">{friend.full_name}</span>
-                              <span className="text-[9px] text-gray-400 block">{friend.roll_number || 'No Roll #'} • {friend.branch || 'No Dept'}</span>
+                {/* STEP 1: EVENT DETAILS & PROFILE VERIFICATION */}
+                {currentStep === 1 && (
+                  <div className="flex flex-col gap-6 animate-fadeIn">
+                    {/* DYNAMIC DOCUMENT & IMAGE PREVIEW BANNER CELL FOR STUDENTS */}
+                    {event?.documents && event.documents.length > 0 && (
+                      <div className="mb-6 flex flex-col gap-4">
+                        {event.documents.map((doc, idx) => {
+                          const isImage = doc.url?.match(/\.(jpeg|jpg|gif|png|webp)/i) || !doc.url?.endsWith('.pdf');
+                          
+                          return (
+                            <div key={doc.id || idx} className="w-full">
+                              {isImage ? (
+                                /* Automatic Inline Image Display */
+                                <div className="flex flex-col gap-1.5 border border-slate-100 bg-white p-3 rounded-2xl shadow-sm">
+                                  {doc.description && (
+                                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-1">
+                                      💡 Reference: {doc.description}
+                                    </span>
+                                  )}
+                                  <div className="w-full max-h-72 rounded-xl overflow-hidden bg-slate-50 border flex items-center justify-center">
+                                    <img 
+                                      src={doc.url} 
+                                      alt={doc.description || 'Event Attachment'} 
+                                      className="w-full max-h-72 object-contain"
+                                    />
+                                  </div>
+                                </div>
+                              ) : (
+                                /* Normal PDF Download Attachment Link */
+                                <div className="flex items-center justify-between p-3 bg-slate-50 border rounded-xl text-xs">
+                                  <span className="font-medium text-slate-600">📄 {doc.description || 'Reference Guide'}</span>
+                                  <a href={doc.url} target="_blank" rel="noreferrer" className="text-blue-600 font-bold hover:underline">
+                                    Download PDF
+                                  </a>
+                                </div>
+                              )}
                             </div>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
+                          );
+                        })}
+                      </div>
+                    )}
 
-              {/* Dynamic Custom Questions */}
-              {customFields.length > 0 && (
-                <div className="space-y-4">
-                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Organizer Additional Questions</h4>
-                  {customFields.map((field) => (
-                    <div key={field.id} className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-700">
-                        {field.label} <span className="text-rose-500">*</span>
-                      </label>
-                      {field.type === 'select' ? (
-                        <select
-                          required
-                          value={answers[field.id] || ''}
-                          onChange={(e) => handleCustomFieldChange(field.id, e.target.value)}
-                          className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs bg-white"
-                        >
-                          <option value="">Select an option</option>
-                          {field.options && field.options.map(opt => (
-                            <option key={opt} value={opt}>{opt}</option>
-                          ))}
-                        </select>
-                      ) : field.type === 'mcq' ? (
-                        field.allow_multiple ? (
-                          <div className="space-y-2 mt-1">
-                            {field.options && field.options.map((opt) => {
-                              const currentAnswers = Array.isArray(answers[field.id]) ? answers[field.id] : [];
-                              const isChecked = currentAnswers.includes(opt);
+                    {/* Event Description & Timing Details */}
+                    <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-3">
+                      <div>
+                        <h4 className="text-[10px] font-bold text-blue-700 uppercase tracking-wider">Event Details</h4>
+                        <p className="text-xs text-slate-700 mt-1 leading-relaxed">
+                          {event?.description || "No description provided for this event."}
+                        </p>
+                      </div>
+                      
+                      <div className="pt-2 border-t border-slate-200/50 grid grid-cols-1 sm:grid-cols-2 gap-3 text-[10px] font-semibold">
+                        <div>
+                          <span className="text-gray-400 uppercase tracking-wider block">Registration Deadline</span>
+                          <span className="font-bold text-slate-700 mt-0.5 block">
+                            {event?.registration_deadline ? new Date(event.registration_deadline).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400 uppercase tracking-wider block">Event Date & Duration</span>
+                          <span className="font-bold text-primary-600 mt-0.5 block">
+                            {event?.event_start_date ? new Date(event.event_start_date).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A'} ({event?.duration_days} {event?.duration_days === 1 ? 'Day' : 'Days'})
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Student Details Summary */}
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                      <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Academic Profile Info</h4>
+                      <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs">
+                        <div>
+                          <span className="text-gray-400 block mb-0.5">Full Name</span>
+                          <span className="font-semibold text-slate-700">{profile.full_name}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400 block mb-0.5">Roll Number</span>
+                          <span className="font-semibold text-slate-700">{profile.roll_number || 'N/A'}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400 block mb-0.5">Branch / Course</span>
+                          <span className="font-semibold text-slate-700">{profile.branch || 'N/A'}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400 block mb-0.5">Semester</span>
+                          <span className="font-semibold text-slate-700">{profile.semester || 'N/A'}</span>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="text-gray-400 block mb-0.5">Phone Number</span>
+                          <span className="font-semibold text-slate-700">{profile.phone || 'N/A'}</span>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-3 pt-3 border-t border-slate-200/65">
+                        Need to update your details? Close this modal and edit your profile in the sidebar.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 2: TEAM CONFIGURATION & SUBMISSION OPTION */}
+                {currentStep === 2 && (
+                  <div className="flex flex-col gap-6 animate-fadeIn">
+                    {/* Team Formation UI */}
+                    {event.participation_type === 'Team' && (
+                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3">
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Form Your Team</h4>
+                          <p className="text-[11px] text-gray-400 mt-1">Provide a team name and select teammates from your accepted connections.</p>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="block text-[10px] font-semibold text-slate-500 uppercase">Team Name</label>
+                          <input 
+                            type="text" 
+                            value={teamName}
+                            onChange={(e) => setTeamName(e.target.value)}
+                            placeholder="Enter a creative name for your team..."
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 bg-white"
+                            required
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between text-[10px] text-slate-500 bg-white px-3 py-1.5 rounded-lg border border-slate-100 font-semibold">
+                          <span>Required Size: <strong className="text-slate-700">{event.min_team_size || 1} - {event.max_team_size || 3} members</strong></span>
+                          <span>Current Size: <strong className={1 + selectedTeammates.length < (event.min_team_size || 1) || 1 + selectedTeammates.length > (event.max_team_size || 3) ? "text-rose-500" : "text-emerald-500"}>{1 + selectedTeammates.length}</strong></span>
+                        </div>
+                        
+                        {friendsList.length === 0 ? (
+                          <div className="text-xs text-gray-400 italic bg-white p-3 rounded-lg border border-slate-100 text-center">
+                            No accepted friend connections found. Add connections in your student hub to form teams.
+                          </div>
+                        ) : (
+                          <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                            {friendsList.map((friend) => {
+                              if (!friend || !friend.id) return null;
+                              const isChecked = selectedTeammates.some(t => t.id === friend.id);
                               return (
-                                <label key={opt} className="flex items-center gap-3 px-3 py-2.5 border border-slate-200 rounded-xl hover:bg-slate-50 transition cursor-pointer text-xs">
+                                <label key={friend.id} className="flex items-center gap-3 p-2 bg-white rounded-lg border border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors text-xs">
                                   <input
                                     type="checkbox"
-                                    name={field.id}
-                                    value={opt}
                                     checked={isChecked}
-                                    onChange={(e) => {
-                                      let newAnswers;
-                                      if (e.target.checked) {
-                                        newAnswers = [...currentAnswers, opt];
+                                    onChange={() => {
+                                      if (isChecked) {
+                                        setSelectedTeammates(selectedTeammates.filter(t => t.id !== friend.id));
                                       } else {
-                                        newAnswers = currentAnswers.filter(item => item !== opt);
+                                        setSelectedTeammates([...selectedTeammates, friend]);
                                       }
-                                      handleCustomFieldChange(field.id, newAnswers);
                                     }}
-                                    className="w-4 h-4 rounded text-primary-600 border-slate-300 focus:ring-primary-500"
+                                    className="rounded border-slate-300 text-primary-500 focus:ring-primary-500/20 w-4 h-4"
                                   />
-                                  <span className="text-slate-700 font-semibold">{opt}</span>
+                                  <div>
+                                    <span className="font-semibold text-slate-700 block">{friend.full_name}</span>
+                                    <span className="text-[9px] text-gray-400 block">{friend.roll_number || 'No Roll #'} • {friend.branch || 'No Dept'}</span>
+                                  </div>
                                 </label>
                               );
                             })}
-                            {(!field.options || field.options.length === 0) && (
-                              <p className="text-[11px] text-gray-400 italic">No options configured for this MCQ question.</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Dynamic Custom Questions */}
+                    {customFields.length > 0 && (
+                      <div className="space-y-4">
+                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Organizer Additional Questions</h4>
+                        {customFields.map((field) => (
+                          <div key={field.id} className="space-y-1.5">
+                            <label className="block text-xs font-bold text-slate-700">
+                              {field.label} <span className="text-rose-500">*</span>
+                            </label>
+                            {field.type === 'select' ? (
+                              <select
+                                required
+                                value={answers[field.id] || ''}
+                                onChange={(e) => handleCustomFieldChange(field.id, e.target.value)}
+                                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs bg-white"
+                              >
+                                <option value="">Select an option</option>
+                                {field.options && field.options.map(opt => (
+                                  <option key={opt} value={opt}>{opt}</option>
+                                ))}
+                              </select>
+                            ) : field.type === 'mcq' ? (
+                              field.allow_multiple ? (
+                                <div className="space-y-2 mt-1">
+                                  {field.options && field.options.map((opt) => {
+                                    const currentAnswers = Array.isArray(answers[field.id]) ? answers[field.id] : [];
+                                    const isChecked = currentAnswers.includes(opt);
+                                    return (
+                                      <label key={opt} className="flex items-center gap-3 px-3 py-2.5 border border-slate-200 rounded-xl hover:bg-slate-50 transition cursor-pointer text-xs">
+                                        <input
+                                          type="checkbox"
+                                          name={field.id}
+                                          value={opt}
+                                          checked={isChecked}
+                                          onChange={(e) => {
+                                            let newAnswers;
+                                            if (e.target.checked) {
+                                              newAnswers = [...currentAnswers, opt];
+                                            } else {
+                                              newAnswers = currentAnswers.filter(item => item !== opt);
+                                            }
+                                            handleCustomFieldChange(field.id, newAnswers);
+                                          }}
+                                          className="w-4 h-4 rounded text-primary-600 border-slate-300 focus:ring-primary-500"
+                                        />
+                                        <span className="text-slate-700 font-semibold">{opt}</span>
+                                      </label>
+                                    );
+                                  })}
+                                  {(!field.options || field.options.length === 0) && (
+                                    <p className="text-[11px] text-gray-400 italic">No options configured for this MCQ question.</p>
+                                  )}
+                                </div>
+                              ) : (
+                                <select
+                                  required
+                                  value={answers[field.id] || ''}
+                                  onChange={(e) => handleCustomFieldChange(field.id, e.target.value)}
+                                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs bg-white"
+                                >
+                                  <option value="">Select an option</option>
+                                  {field.options && field.options.map(opt => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                  ))}
+                                </select>
+                              )
+                            ) : field.type === 'text_area' ? (
+                              <textarea
+                                required
+                                rows={3}
+                                value={answers[field.id] || ''}
+                                onChange={(e) => handleCustomFieldChange(field.id, e.target.value)}
+                                placeholder="Type your answer here..."
+                                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs resize-none"
+                              />
+                            ) : field.type === 'file' ? (
+                              <input
+                                type="file"
+                                accept="application/pdf, image/*"
+                                required
+                                onChange={(e) => handleCustomFileChange(e, field)}
+                                className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs bg-white"
+                              />
+                            ) : (
+                              <input
+                                type="text"
+                                required
+                                value={answers[field.id] || ''}
+                                onChange={(e) => handleCustomFieldChange(field.id, e.target.value)}
+                                placeholder="Type your answer here..."
+                                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs"
+                              />
                             )}
                           </div>
-                        ) : (
-                          <select
-                            required
-                            value={answers[field.id] || ''}
-                            onChange={(e) => handleCustomFieldChange(field.id, e.target.value)}
-                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs bg-white"
-                          >
-                            <option value="">Select an option</option>
-                            {field.options && field.options.map(opt => (
-                              <option key={opt} value={opt}>{opt}</option>
-                            ))}
-                          </select>
-                        )
-                      ) : field.type === 'text_area' ? (
-                        <textarea
-                          required
-                          rows={3}
-                          value={answers[field.id] || ''}
-                          onChange={(e) => handleCustomFieldChange(field.id, e.target.value)}
-                          placeholder="Type your answer here..."
-                          className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs resize-none"
-                        />
-                      ) : field.type === 'file' ? (
-                        <input
-                          type="file"
-                          accept="application/pdf, image/*"
-                          required
-                          onChange={(e) => handleCustomFileChange(e, field)}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs bg-white"
-                        />
-                      ) : (
-                        <input
-                          type="text"
-                          required
-                          value={answers[field.id] || ''}
-                          onChange={(e) => handleCustomFieldChange(field.id, e.target.value)}
-                          placeholder="Type your answer here..."
-                          className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs"
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-3 justify-end pt-4 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors text-xs font-semibold text-gray-600"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="bg-primary-500 hover:bg-primary-600 text-white font-semibold py-2.5 px-6 rounded-xl shadow-md shadow-primary-500/10 hover:shadow-lg transition-all flex items-center gap-2 text-xs"
-                >
-                  {loading ? (
-                    <>
-                      <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      Registering...
-                    </>
-                  ) : (
-                    'Confirm Registration'
-                  )}
-                </button>
+              {/* 3. MODAL NAVIGATION ACTION FOOTER */}
+              <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
+                {currentStep === 1 ? (
+                  <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700">
+                    Cancel
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => setCurrentStep(1)} className="px-4 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
+                    ← Back
+                  </button>
+                )}
+
+                {currentStep === 1 ? (
+                  <button type="button" onClick={() => setCurrentStep(2)} className="px-5 py-2.5 bg-blue-600 text-white font-semibold text-sm rounded-xl hover:bg-blue-700 shadow-sm transition-all">
+                    Next Step →
+                  </button>
+                ) : (
+                  <button type="submit" disabled={loading} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl shadow-sm transition-all flex items-center gap-2">
+                    {loading ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Submitting...
+                      </>
+                    ) : (
+                      'Submit Registration'
+                    )}
+                  </button>
+                )}
               </div>
             </form>
           )}
         </div>
+
       </div>
     </div>
   );

@@ -674,9 +674,9 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
       {/* Main Container */}
       <main className="flex-grow flex flex-col min-w-0 pb-24 md:pb-6 transition-all duration-200">
         {/* Header Bar */}
-        <header className="h-20 bg-white border-b border-slate-200 px-8 flex items-center justify-between shrink-0">
+        <header className="h-auto py-4 sm:py-0 sm:h-20 bg-white border-b border-slate-200 px-4 sm:px-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
           <div>
-            <h1 className="text-xl font-bold text-slate-800 capitalize">
+            <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight leading-tight capitalize">
               {activeTab === 'upcoming' 
                 ? 'All Workshops & Seminars' 
                 : activeTab === 'registrations' 
@@ -689,10 +689,10 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
             </h1>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto">
             {/* Search Bar - only shown on events views */}
             {(activeTab === 'dashboard' || activeTab === 'upcoming') && (
-              <div className="relative w-64">
+              <div className="relative w-full sm:w-64">
                 <input
                   type="text"
                   placeholder="Search events..."
@@ -719,53 +719,62 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
               </button>
 
               {showNotifications && (
-                <div className="absolute right-0 mt-3 w-80 bg-white border border-slate-200/80 rounded-2xl shadow-xl z-50 p-4 space-y-3 animate-fade-in">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                    <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Notifications</h3>
-                    <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">
-                      {inviteNotifications.length} New
-                    </span>
+                <>
+                  {/* 1. BACKDROP INTERCEPTOR: Detects clicks anywhere else on the screen to close it instantly */}
+                  <div 
+                    className="fixed inset-0 z-40 bg-transparent" 
+                    onClick={() => setShowNotifications(false)} 
+                  />
+
+                  {/* 2. THE DROPDOWN CONTAINER: Fixed position adjustment preventing phone screen edge overflow */}
+                  <div className="absolute right-0 top-full mt-2 z-50 w-[calc(100vw-32px)] max-w-sm sm:w-80 bg-white rounded-2xl shadow-xl border border-slate-100 p-4 animate-fadeIn transform origin-top-right">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-50 mb-2">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Notifications</span>
+                      <span className="px-2 py-0.5 text-[10px] font-bold bg-blue-50 text-blue-600 rounded-full">
+                        {inviteNotifications.length} New
+                      </span>
+                    </div>
+                    {inviteNotifications.length === 0 ? (
+                      <div className="py-4 text-center text-sm text-slate-400 italic">
+                        No new notifications
+                      </div>
+                    ) : (
+                      <div className="max-h-60 overflow-y-auto divide-y divide-slate-100">
+                        {inviteNotifications.map((invite) => (
+                          <div key={invite.id} className="py-3 first:pt-0 last:pb-0 flex flex-col gap-2">
+                            <div className="flex items-start gap-3">
+                              <div className="w-8 h-8 bg-blue-100 text-blue-600 font-bold rounded-full flex items-center justify-center text-xs shrink-0">
+                                {invite.profiles?.full_name ? invite.profiles.full_name.charAt(0).toUpperCase() : '?'}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium text-slate-700 leading-normal">
+                                  <strong className="font-bold text-slate-900">{invite.profiles?.full_name || 'Someone'}</strong> sent you a connection request.
+                                </p>
+                                <span className="text-[9px] text-slate-400 block mt-0.5">
+                                  Code: <span className="font-mono bg-slate-50 px-1 py-0.5 rounded border border-slate-100">{invite.profiles?.friend_code || '------'}</span>
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex justify-end gap-2 pl-11">
+                              <button
+                                onClick={() => handleDeclineInvite(invite.id)}
+                                className="px-2.5 py-1 text-[10px] font-semibold text-slate-600 hover:text-slate-800 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                              >
+                                Decline
+                              </button>
+                              <button
+                                onClick={() => handleAcceptInvite(invite.id)}
+                                className="px-3 py-1 text-[10px] font-semibold text-white bg-primary-500 hover:bg-primary-600 rounded-lg transition-colors shadow-sm"
+                              >
+                                Accept
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  {inviteNotifications.length === 0 ? (
-                    <div className="py-6 text-center text-xs text-slate-400">
-                      No new notifications
-                    </div>
-                  ) : (
-                    <div className="max-h-60 overflow-y-auto divide-y divide-slate-100">
-                      {inviteNotifications.map((invite) => (
-                        <div key={invite.id} className="py-3 first:pt-0 last:pb-0 flex flex-col gap-2">
-                           <div className="flex items-start gap-3">
-                             <div className="w-8 h-8 bg-blue-100 text-blue-600 font-bold rounded-full flex items-center justify-center text-xs shrink-0">
-                               {invite.profiles?.full_name ? invite.profiles.full_name.charAt(0).toUpperCase() : '?'}
-                             </div>
-                             <div className="flex-1 min-w-0">
-                               <p className="text-xs font-medium text-slate-700 leading-normal">
-                                 <strong className="font-bold text-slate-900">{invite.profiles?.full_name || 'Someone'}</strong> sent you a connection request.
-                               </p>
-                               <span className="text-[9px] text-slate-400 block mt-0.5">
-                                 Code: <span className="font-mono bg-slate-50 px-1 py-0.5 rounded border border-slate-100">{invite.profiles?.friend_code || '------'}</span>
-                               </span>
-                             </div>
-                           </div>
-                           <div className="flex justify-end gap-2 pl-11">
-                             <button
-                               onClick={() => handleDeclineInvite(invite.id)}
-                               className="px-2.5 py-1 text-[10px] font-semibold text-slate-600 hover:text-slate-800 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
-                             >
-                               Decline
-                             </button>
-                             <button
-                               onClick={() => handleAcceptInvite(invite.id)}
-                               className="px-3 py-1 text-[10px] font-semibold text-white bg-primary-500 hover:bg-primary-600 rounded-lg transition-colors shadow-sm"
-                             >
-                               Accept
-                             </button>
-                           </div>
-                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                </>
               )}
             </div>
 

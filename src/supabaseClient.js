@@ -288,6 +288,10 @@ function createMockClient() {
             e.allow_submissions = true;
             modified = true;
           }
+          if (e.documents === undefined) {
+            e.documents = [];
+            modified = true;
+          }
           return e;
         });
         if (modified) {
