@@ -15,7 +15,17 @@ import RegistrationModal from './RegistrationModal';
 
 
 export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwitchRole }) {
-  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'upcoming' | 'registrations' | 'friends' | 'profile'
+  const [activeTab, setActiveTab] = useState(() => {
+    const savedTab = localStorage.getItem('portal_active_tab');
+    const validTabs = ['dashboard', 'upcoming', 'registrations', 'friends', 'profile'];
+    return (savedTab && validTabs.includes(savedTab)) ? savedTab : 'dashboard';
+  });
+
+  const handleTabChange = (newTabName) => {
+    setActiveTab(newTabName);
+    localStorage.setItem('portal_active_tab', newTabName);
+  };
+
   const [events, setEvents] = useState([]);
   const [myRegistrations, setMyRegistrations] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -513,7 +523,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
           {/* Navigation Links */}
           <nav className="space-y-1">
             <button
-              onClick={() => setActiveTab('dashboard')}
+              onClick={() => handleTabChange('dashboard')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
                 activeTab === 'dashboard'
                   ? 'bg-primary-50 text-primary-500'
@@ -524,7 +534,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
               <span>Dashboard</span>
             </button>
             <button
-              onClick={() => setActiveTab('upcoming')}
+              onClick={() => handleTabChange('upcoming')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
                 activeTab === 'upcoming'
                   ? 'bg-primary-50 text-primary-500'
@@ -535,7 +545,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
               <span>Upcoming Events</span>
             </button>
             <button
-              onClick={() => setActiveTab('registrations')}
+              onClick={() => handleTabChange('registrations')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all relative whitespace-nowrap ${
                 activeTab === 'registrations'
                   ? 'bg-primary-50 text-primary-500'
@@ -551,7 +561,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
               )}
             </button>
             <button
-              onClick={() => setActiveTab('friends')}
+              onClick={() => handleTabChange('friends')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all relative whitespace-nowrap ${
                 activeTab === 'friends'
                   ? 'bg-primary-50 text-primary-500'
@@ -567,7 +577,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
               )}
             </button>
             <button
-              onClick={() => setActiveTab('profile')}
+              onClick={() => handleTabChange('profile')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
                 activeTab === 'profile'
                   ? 'bg-primary-50 text-primary-500'
@@ -607,7 +617,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-2 py-2 shadow-lg flex justify-around items-center z-50 md:hidden pb-safe">
         {/* Option 1: Dashboard */}
         <button 
-          onClick={() => setActiveTab('dashboard')}
+          onClick={() => handleTabChange('dashboard')}
           className={`flex flex-col items-center gap-1 p-2 transition-all ${
             activeTab === 'dashboard' ? 'text-primary-500 font-semibold' : 'text-slate-500'
           }`}
@@ -618,7 +628,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
 
         {/* Option 2: Upcoming Events */}
         <button 
-          onClick={() => setActiveTab('upcoming')}
+          onClick={() => handleTabChange('upcoming')}
           className={`flex flex-col items-center gap-1 p-2 transition-all ${
             activeTab === 'upcoming' ? 'text-primary-500 font-semibold' : 'text-slate-500'
           }`}
@@ -629,7 +639,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
 
         {/* Option 3: My Registrations */}
         <button 
-          onClick={() => setActiveTab('registrations')}
+          onClick={() => handleTabChange('registrations')}
           className={`flex flex-col items-center gap-1 p-2 transition-all relative ${
             activeTab === 'registrations' ? 'text-primary-500 font-semibold' : 'text-slate-500'
           }`}
@@ -645,7 +655,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
 
         {/* Option 4: Friends */}
         <button 
-          onClick={() => setActiveTab('friends')}
+          onClick={() => handleTabChange('friends')}
           className={`flex flex-col items-center gap-1 p-2 transition-all relative ${
             activeTab === 'friends' ? 'text-primary-500 font-semibold' : 'text-slate-500'
           }`}
@@ -661,7 +671,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
 
         {/* Option 5: Profile Settings */}
         <button 
-          onClick={() => setActiveTab('profile')}
+          onClick={() => handleTabChange('profile')}
           className={`flex flex-col items-center gap-1 p-2 transition-all ${
             activeTab === 'profile' ? 'text-primary-500 font-semibold' : 'text-slate-500'
           }`}
@@ -796,7 +806,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                   {/* Profile Action Menu Content */}
                   <div className="absolute right-0 top-full mt-2 z-50 w-48 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 transform origin-top-right animate-fadeIn">
                     <button 
-                      onClick={() => { setActiveTab('profile'); setShowProfileMenu(false); }}
+                      onClick={() => { handleTabChange('profile'); setShowProfileMenu(false); }}
                       className="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition-colors flex items-center gap-2"
                     >
                       ⚙️ Profile Settings
@@ -840,7 +850,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                         Discover, register, and track academic seminars, hands-on workshops, and student networking opportunities.
                       </p>
                       <button
-                        onClick={() => setActiveTab('upcoming')}
+                        onClick={() => handleTabChange('upcoming')}
                         className="bg-white text-primary-600 text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
                       >
                         Explore Upcoming Events
@@ -888,7 +898,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                     <div className="flex justify-between items-center mb-4">
                       <h3 className="text-xl font-bold text-slate-800">Featured Events</h3>
                       <button 
-                        onClick={() => setActiveTab('upcoming')} 
+                        onClick={() => handleTabChange('upcoming')} 
                         className="text-sm font-semibold text-blue-600 hover:underline"
                       >
                         View All

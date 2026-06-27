@@ -33,7 +33,17 @@ const formatDateForInput = (dateStr) => {
 };
 
 export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canSwitchRole }) {
-  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'profile'
+  const [activeTab, setActiveTab] = useState(() => {
+    const savedTab = localStorage.getItem('portal_active_tab');
+    const validTabs = ['dashboard', 'materials', 'profile'];
+    return (savedTab && validTabs.includes(savedTab)) ? savedTab : 'dashboard';
+  });
+
+  const handleTabChange = (newTabName) => {
+    setActiveTab(newTabName);
+    localStorage.setItem('portal_active_tab', newTabName);
+  };
+
   const [events, setEvents] = useState([]);
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -487,7 +497,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
 
           <nav className="space-y-1">
             <button
-              onClick={() => setActiveTab('dashboard')}
+              onClick={() => handleTabChange('dashboard')}
               className={`flex items-center gap-4 px-4 py-3 rounded-xl font-medium text-sm transition-all w-full text-left ${
                 activeTab === 'dashboard'
                   ? 'bg-primary-50 text-primary-500 font-semibold'
@@ -498,7 +508,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
               <span>Event Management</span>
             </button>
             <button
-              onClick={() => setActiveTab('materials')}
+              onClick={() => handleTabChange('materials')}
               className={`flex items-center gap-4 px-4 py-3 rounded-xl font-medium text-sm transition-all w-full text-left ${
                 activeTab === 'materials'
                   ? 'bg-blue-50 text-blue-600 font-semibold'
@@ -518,7 +528,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
               <span>Event Materials</span>
             </button>
             <button
-              onClick={() => setActiveTab('profile')}
+              onClick={() => handleTabChange('profile')}
               className={`flex items-center gap-4 px-4 py-3 rounded-xl font-medium text-sm transition-all w-full text-left ${
                 activeTab === 'profile'
                   ? 'bg-primary-50 text-primary-500 font-semibold'
@@ -555,7 +565,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-2 py-2 shadow-lg flex justify-around items-center z-50 md:hidden pb-safe">
         {/* Option 1: Event Management / Dashboard */}
         <button 
-          onClick={() => setActiveTab('dashboard')}
+          onClick={() => handleTabChange('dashboard')}
           className={`flex flex-col items-center gap-1 p-2 transition-all ${
             activeTab === 'dashboard' ? 'text-blue-600 font-semibold' : 'text-slate-500'
           }`}
@@ -568,7 +578,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
 
         {/* Option 2: Event Materials */}
         <button 
-          onClick={() => setActiveTab('materials')}
+          onClick={() => handleTabChange('materials')}
           className={`flex flex-col items-center gap-1 p-2 transition-all ${
             activeTab === 'materials' ? 'text-blue-600 font-semibold' : 'text-slate-500'
           }`}
@@ -581,7 +591,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
 
         {/* Option 3: Profile Settings */}
         <button 
-          onClick={() => setActiveTab('profile')}
+          onClick={() => handleTabChange('profile')}
           className={`flex flex-col items-center gap-1 p-2 transition-all ${
             activeTab === 'profile' ? 'text-blue-600 font-semibold' : 'text-slate-500'
           }`}
@@ -667,7 +677,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                   {/* Profile Action Menu Content */}
                   <div className="absolute right-0 top-full mt-2 z-50 w-48 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 transform origin-top-right animate-fadeIn">
                     <button 
-                      onClick={() => { setActiveTab('profile'); setShowProfileMenu(false); }}
+                      onClick={() => { handleTabChange('profile'); setShowProfileMenu(false); }}
                       className="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition-colors flex items-center gap-2"
                     >
                       ⚙️ Profile Settings

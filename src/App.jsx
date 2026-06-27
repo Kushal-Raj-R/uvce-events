@@ -87,7 +87,13 @@ export default function App() {
     
     // Only update view role on initialization or explicit SIGNED_IN event
     if (!event || event === 'SIGNED_IN') {
-      setRole(resolvedRole);
+      const savedRolePreference = localStorage.getItem('active_portal_role');
+      if (savedRolePreference && (savedRolePreference === resolvedRole || resolvedRole === 'organizer')) {
+        setRole(savedRolePreference);
+      } else {
+        setRole(resolvedRole);
+        localStorage.setItem('active_portal_role', resolvedRole);
+      }
     }
   }
 
@@ -96,11 +102,14 @@ export default function App() {
     setRole(authRole);
     setDbRole(authRole);
     setSession({ user: authUser });
+    localStorage.setItem('active_portal_role', authRole);
   };
 
   const handleSignOut = async () => {
     setLoading(true);
     await supabase.auth.signOut();
+    localStorage.removeItem('active_portal_role');
+    localStorage.removeItem('portal_active_tab');
     setSession(null);
     setUser(null);
     setRole(null);
@@ -125,6 +134,9 @@ export default function App() {
     }
 
     setRole(nextRole);
+    localStorage.setItem('active_portal_role', nextRole);
+    // Clear tab cache history when shifting roles to prevent view overlaps
+    localStorage.removeItem('portal_active_tab');
   };
 
   if (loading) {
