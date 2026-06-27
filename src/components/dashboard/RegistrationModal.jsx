@@ -4,17 +4,57 @@ import imageCompression from 'browser-image-compression';
 
 export default function RegistrationModal({ event, user, onClose, onSuccess, onRefresh }) {
   const [profile, setProfile] = useState(null);
-  const [answers, setAnswers] = useState({});
+  
+  // 1. Recover step progress automatically if a mobile app-switch reload occurs
+  const [currentStep, setCurrentStep] = useState(() => {
+    const savedStep = localStorage.getItem(`reg_step_${event?.id}`);
+    return savedStep ? parseInt(savedStep, 10) : 1;
+  });
+
+  // 2. Recover all text input fields, checkboxes, and selections
+  const [answers, setAnswers] = useState(() => {
+    const savedAnswers = localStorage.getItem(`reg_answers_${event?.id}`);
+    return savedAnswers ? JSON.parse(savedAnswers) : {};
+  });
+
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [success, setSuccess] = useState(false);
   const [friendsList, setFriendsList] = useState([]);
   const [selectedTeammates, setSelectedTeammates] = useState([]);
   const [teamName, setTeamName] = useState('');
-  const [currentStep, setCurrentStep] = useState(1);
+
+  // 3. Keep localStorage perfectly updated whenever changes happen
+  useEffect(() => {
+    if (event?.id) {
+      localStorage.setItem(`reg_step_${event.id}`, currentStep);
+    }
+  }, [currentStep, event?.id]);
 
   useEffect(() => {
-    setCurrentStep(1);
+    if (event?.id && Object.keys(answers).length > 0) {
+      localStorage.setItem(`reg_answers_${event.id}`, JSON.stringify(answers));
+    }
+  }, [answers, event?.id]);
+
+  // 4. Clear memory ONLY when the student successfully registers or closes manually
+  const clearRegistrationCache = () => {
+    if (event?.id) {
+      localStorage.removeItem(`reg_step_${event.id}`);
+      localStorage.removeItem(`reg_answers_${event.id}`);
+    }
+  };
+
+  const handleClose = () => {
+    clearRegistrationCache();
+    onClose();
+  };
+
+  useEffect(() => {
+    const savedStep = localStorage.getItem(`reg_step_${event?.id}`);
+    if (!savedStep) {
+      setCurrentStep(1);
+    }
     setSuccess(false);
     setErrorMsg('');
   }, [event?.id]);
@@ -299,6 +339,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
       if (typeof onRefresh === 'function') {
         onRefresh();
       }
+      clearRegistrationCache();
       setTimeout(() => {
         onSuccess();
       }, 2000);
@@ -339,7 +380,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
               <div className={`w-6 h-1.5 rounded-full transition-all ${currentStep === 2 ? 'bg-blue-600' : 'bg-slate-200'}`} />
             </div>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="text-gray-400 hover:text-gray-600 transition-colors ml-2"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -657,7 +698,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
               {/* 3. MODAL NAVIGATION ACTION FOOTER */}
               <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
                 {currentStep === 1 ? (
-                  <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700">
+                  <button type="button" onClick={handleClose} className="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700">
                     Cancel
                   </button>
                 ) : (
