@@ -210,11 +210,16 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
     // Ensure all custom fields have answers
     const customFields = event.custom_fields || [];
     for (const field of customFields) {
-      const ans = answers[field.id];
-      if (!ans || (typeof ans === 'string' && ans.trim() === '') || (Array.isArray(ans) && ans.length === 0)) {
-        setErrorMsg(`Please fill out ${field.label}`);
-        setLoading(false);
-        return;
+      if (field.required ?? true) {
+        const ans = answers[field.id];
+        if (!ans || (typeof ans === 'string' && ans.trim() === '') || (Array.isArray(ans) && ans.length === 0)) {
+          setErrorMsg(field.type === 'file' 
+            ? `The field "${field.label}" is required. Please upload the requested file before submitting.`
+            : `The field "${field.label}" is required. Please answer before submitting.`
+          );
+          setLoading(false);
+          return;
+        }
       }
     }
 
