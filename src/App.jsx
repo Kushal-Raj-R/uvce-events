@@ -34,6 +34,18 @@ export default function App() {
 
     // 2. Setup auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      console.log(`🔑 Auth Event Fired: ${event}`);
+      
+      // Check if the update is just a profile change/token update
+      if (event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
+        console.log("🛡️ Profile modification or token refresh detected. Blocking page refresh.");
+        setSession(newSession);
+        if (newSession) {
+          setUser(newSession.user);
+        }
+        return; 
+      }
+
       setLoading(true);
       if (newSession) {
         setSession(newSession);
