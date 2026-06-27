@@ -157,52 +157,53 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
       return;
     }
 
-    // 1. Instantly write a placeholder state to localStorage to prevent app-switch drops
-    const currentAnswers = JSON.parse(localStorage.getItem(`reg_answers_${event?.id}`) || '{}');
-    currentAnswers[`uploading_${fieldId}`] = true;
-    localStorage.setItem(`reg_answers_${event?.id}`, JSON.stringify(currentAnswers));
+    const reader = new FileReader();
     
-    setAnswers(prev => ({
-      ...prev,
-      [`uploading_${fieldId}`]: true
-    }));
-
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}_${Date.now()}.${fileExt}`;
-      const filePath = `student-uploads/${fileName}`;
-
-      // 2. Perform the upload to your Supabase storage bucket
-      const { error: uploadError } = await supabase.storage
-        .from('event-materials')
-        .upload(filePath, file, { cacheControl: '3600', upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('event-materials')
-        .getPublicUrl(filePath);
-
-      // 3. SUCCESS STATE: Force save immediately to localStorage to survive any background kills
-      const updatedAnswers = JSON.parse(localStorage.getItem(`reg_answers_${event?.id}`) || '{}');
-      updatedAnswers[fieldId] = publicUrl;
-      updatedAnswers[`uploading_${fieldId}`] = false;
+    reader.onloadend = async () => {
+      const base64String = reader.result;
       
-      localStorage.setItem(`reg_answers_${event?.id}`, JSON.stringify(updatedAnswers));
-
-      // Update local React view layer state
-      setAnswers(updatedAnswers);
-      alert("✓ File loaded successfully into registration memory!");
-
-    } catch (error) {
-      console.error("Upload process failure details:", error.message);
-      alert(`Upload failed: ${error.message}`);
+      const cachedAnswers = JSON.parse(localStorage.getItem(`reg_answers_${event?.id}`) || '{}');
+      cachedAnswers[fieldId] = base64String;
+      localStorage.setItem(`reg_answers_${event?.id}`, JSON.stringify(cachedAnswers));
       
       setAnswers(prev => ({
         ...prev,
-        [`uploading_${fieldId}`]: false
+        [fieldId]: base64String
       }));
-    }
+
+      try {
+        setAnswers(prev => ({ ...prev, [`uploading_${fieldId}`]: true }));
+        
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random()}_${Date.now()}.${fileExt}`;
+        const filePath = `student-uploads/${fileName}`;
+
+        const base64Data = base64String.split(',')[1];
+        const blob = await fetch(`data:${file.type};base64,${base64Data}`).then(res => res.blob());
+
+        const { error: uploadError } = await supabase.storage
+          .from('event-materials')
+          .upload(filePath, blob, { contentType: file.type, upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('event-materials')
+          .getPublicUrl(filePath);
+
+        const finalAnswers = JSON.parse(localStorage.getItem(`reg_answers_${event?.id}`) || '{}');
+        finalAnswers[fieldId] = publicUrl;
+        localStorage.setItem(`reg_answers_${event?.id}`, JSON.stringify(finalAnswers));
+        setAnswers(finalAnswers);
+
+      } catch (err) {
+        console.error("Background sync failed, fallback string kept safe:", err.message);
+      } finally {
+        setAnswers(prev => ({ ...prev, [`uploading_${fieldId}`]: false }));
+      }
+    };
+
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e) => {
@@ -716,7 +717,11 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
                                 </div>
                                 {answers[field.id] && (
                                   <div className="text-[10px] text-gray-400 truncate max-w-xs pl-2">
-                                    Url: <a href={answers[field.id]} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">{answers[field.id]}</a>
+                                    {answers[field.id].startsWith('data:') ? (
+                                      <span className="text-slate-500 italic">Temporary Base64 cached copy</span>
+                                    ) : (
+                                      <>Url: <a href={answers[field.id]} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">{answers[field.id]}</a></>
+                                    )}
                                   </div>
                                 )}
                               </div>
