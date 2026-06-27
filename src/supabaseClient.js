@@ -24,7 +24,15 @@ let supabaseInstance = null;
 
 if (!isMockMode) {
   try {
-    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
+    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        // CRITICAL: Disable the global window focus state re-sync loop!
+        detectSessionInUrl: false,
+        flowType: 'pkce'
+      }
+    });
   } catch (error) {
     console.error('Failed to initialize Supabase client. Falling back to mock client.', error);
     supabaseInstance = createMockClient();
