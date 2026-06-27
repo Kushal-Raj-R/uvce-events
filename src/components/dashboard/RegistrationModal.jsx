@@ -23,6 +23,8 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
   const [friendsList, setFriendsList] = useState([]);
   const [selectedTeammates, setSelectedTeammates] = useState([]);
   const [teamName, setTeamName] = useState('');
+  const [cameraStream, setCameraStream] = useState(null);
+  const [activeCameraField, setActiveCameraField] = useState(null);
 
   // 3. Keep localStorage perfectly updated whenever changes happen
   useEffect(() => {
@@ -47,6 +49,9 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
 
   const handleClose = () => {
     clearRegistrationCache();
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+    }
     onClose();
   };
 
@@ -66,8 +71,11 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
     return () => {
       // 2. Turn auto-refresh back ON when this modal closes completely
       localStorage.removeItem('block_global_refresh');
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
     };
-  }, []);
+  }, [cameraStream]);
 
   useEffect(() => {
     // Fetch profile of the logged-in student to pre-fill/display
@@ -140,7 +148,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
     }));
   };
 
-  const handleCustomFieldFileUpload = async (e, fieldId) => {
+  const _handleCustomFieldFileUpload = async (e, fieldId) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -204,6 +212,80 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
     };
 
     reader.readAsDataURL(file);
+  };
+
+  const startInlineCamera = async (fieldId) => {
+    try {
+      setActiveCameraField(fieldId);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" }, 
+        audio: false
+      });
+      setCameraStream(stream);
+      
+      setTimeout(() => {
+        const videoElement = document.getElementById(`video-preview-${fieldId}`);
+        if (videoElement) videoElement.srcObject = stream;
+      }, 100);
+    } catch (err) {
+      console.error("Camera access error:", err);
+      alert("Camera initialization failed. Please allow camera permissions in your mobile browser settings.");
+    }
+  };
+
+  const captureInlineSnapshot = async (fieldId) => {
+    const videoElement = document.getElementById(`video-preview-${fieldId}`);
+    if (!videoElement) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = videoElement.videoWidth;
+    canvas.height = videoElement.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+
+    const updatedAnswers = { ...answers, [fieldId]: dataUrl };
+    setAnswers(updatedAnswers);
+    localStorage.setItem(`reg_answers_${event?.id}`, JSON.stringify(updatedAnswers));
+
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+    }
+    setCameraStream(null);
+    setActiveCameraField(null);
+
+    // Trigger background Supabase storage upload using the base64 blob
+    try {
+      setAnswers(prev => ({ ...prev, [`uploading_${fieldId}`]: true }));
+      
+      const fileExt = 'jpg';
+      const fileName = `${Math.random()}_${Date.now()}.${fileExt}`;
+      const filePath = `student-uploads/${fileName}`;
+
+      const base64Data = dataUrl.split(',')[1];
+      const blob = await fetch(`data:image/jpeg;base64,${base64Data}`).then(res => res.blob());
+
+      const { error: uploadError } = await supabase.storage
+        .from('event-materials')
+        .upload(filePath, blob, { contentType: 'image/jpeg', upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('event-materials')
+        .getPublicUrl(filePath);
+
+      const finalAnswers = JSON.parse(localStorage.getItem(`reg_answers_${event?.id}`) || '{}');
+      finalAnswers[fieldId] = publicUrl;
+      localStorage.setItem(`reg_answers_${event?.id}`, JSON.stringify(finalAnswers));
+      setAnswers(finalAnswers);
+
+    } catch (err) {
+      console.error("Background sync failed, fallback string kept safe:", err.message);
+    } finally {
+      setAnswers(prev => ({ ...prev, [`uploading_${fieldId}`]: false }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -681,39 +763,47 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
                                 className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs resize-none"
                               />
                             ) : field.type === 'file' ? (
-                              /* DIRECT-BOUND NATIVE FILE COMPONENT MODULE */
+                              /* PERSISTENT INLINE CAMERA VIEWPORT CAPTURE LAYOUT */
                               <div className="flex flex-col gap-2 w-full mt-2 text-left" onClick={(e) => e.stopPropagation()}>
-                                <div className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl flex flex-col gap-3">
-                                  {/* Explicit Native File Selector: Bypasses hidden click loops that trigger browser resets */}
-                                  <input
-                                    type="file"
-                                    accept="image/*,.pdf"
-                                    onChange={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      
-                                      const file = e.target.files?.[0];
-                                      if (file) {
-                                        // Fire your upload routine instantly to stream the data to Supabase 
-                                        // before the OS can clear the background state
-                                        handleCustomFieldFileUpload(e, field.id);
-                                      }
-                                    }}
-                                    className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100 transition-all cursor-pointer bg-white border border-slate-100 p-2"
-                                  />
-
-                                  {/* PERSISTENT MEMORY CHECK */}
-                                  {answers[field.id] && (
-                                    <div className="mt-1 p-2 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center gap-2">
-                                      <span className="text-emerald-600 font-bold text-xs flex items-center gap-1">
-                                        ✓ File Saved to Registration Memory
-                                      </span>
+                                <div className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col gap-3">
+                                  
+                                  {/* ACTIVE STREAM VIEW: Appears only when user clicks to take a photo */}
+                                  {activeCameraField === field.id && (
+                                    <div className="w-full rounded-xl overflow-hidden bg-black border relative aspect-video flex items-center justify-center">
+                                      <video id={`video-preview-${field.id}`} autoPlay playsInline className="w-full h-full object-cover" />
+                                      <button
+                                        type="button"
+                                        onClick={() => captureInlineSnapshot(field.id)}
+                                        className="absolute bottom-3 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg border border-blue-500 active:scale-95 transition-transform"
+                                      >
+                                        📸 Capture Document Frame
+                                      </button>
                                     </div>
                                   )}
-                                  
-                                  {answers[`uploading_${field.id}`] && (
-                                    <span className="text-xs text-slate-400 animate-pulse">Uploading file securely...</span>
-                                  )}
+
+                                  {/* PREVIEW CONTAINER */}
+                                  <div className="flex items-center justify-between gap-4">
+                                    <div className="flex-1">
+                                      {answers[field.id] ? (
+                                        <div className="flex flex-col gap-1">
+                                          <span className="text-xs font-bold text-emerald-600">✓ Image Document Captured</span>
+                                          <img src={answers[field.id]} alt="Captured snapshot" className="w-16 h-12 rounded border object-cover bg-white" />
+                                        </div>
+                                      ) : (
+                                        <span className="text-xs text-slate-400 italic">No asset captured yet</span>
+                                      )}
+                                    </div>
+
+                                    {activeCameraField !== field.id && (
+                                      <button
+                                        type="button"
+                                        onClick={() => startInlineCamera(field.id)}
+                                        className="text-xs font-bold bg-white text-blue-600 hover:bg-blue-50 px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm"
+                                      >
+                                        {answers[field.id] ? '🔄 Retake Snapshot' : '📷 Take Snapshot'}
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
                                 {answers[field.id] && (
                                   <div className="text-[10px] text-gray-400 truncate max-w-xs pl-2">
