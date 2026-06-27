@@ -419,7 +419,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
   return (
     <div className="min-h-screen flex bg-slate-50 font-sans">
       {/* Left Sidebar */}
-      <aside className="w-64 bg-white border-r border-slate-200 flex flex-col justify-between p-6 shrink-0">
+      <aside className="hidden md:flex w-64 bg-white border-r border-slate-200 flex-col justify-between p-6 shrink-0">
         <div className="space-y-8">
           <div>
             <h2 className="text-xl font-black text-primary-500 tracking-tight flex items-center gap-2">
@@ -496,8 +496,51 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
         </div>
       </aside>
 
+      {/* MOBILE BOTTOM NAVIGATION BAR - Only visible on mobile screens (md:hidden) */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-2 py-2 shadow-lg flex justify-around items-center z-50 md:hidden pb-safe">
+        {/* Option 1: Event Management / Dashboard */}
+        <button 
+          onClick={() => setActiveTab('dashboard')}
+          className={`flex flex-col items-center gap-1 p-2 transition-all ${
+            activeTab === 'dashboard' ? 'text-blue-600 font-semibold' : 'text-slate-500'
+          }`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
+          </svg>
+          <span className="text-[10px]">Home</span>
+        </button>
+
+        {/* Option 2: Event Materials */}
+        <button 
+          onClick={() => setActiveTab('materials')}
+          className={`flex flex-col items-center gap-1 p-2 transition-all ${
+            activeTab === 'materials' ? 'text-blue-600 font-semibold' : 'text-slate-500'
+          }`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+          </svg>
+          <span className="text-[10px]">Materials</span>
+        </button>
+
+        {/* Option 3: Profile Settings */}
+        <button 
+          onClick={() => setActiveTab('profile')}
+          className={`flex flex-col items-center gap-1 p-2 transition-all ${
+            activeTab === 'profile' ? 'text-blue-600 font-semibold' : 'text-slate-500'
+          }`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.43l-1.003.767c-.306.235-.45.631-.388 1.01.003.022.005.044.005.066v.04c0 .022-.002.044-.005.066-.063.379.082.775.388 1.01l1.003.767a1.125 1.125 0 0 1 .26 1.43l-1.296 2.247a1.125 1.125 0 0 1-1.37.49l-1.216-.456c-.356-.133-.751-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.43l1.004-.767c.306-.235.45-.63.388-1.01a3.47 3.47 0 0 1-.005-.132v-.04c0-.022.002-.044.005-.066.063-.379-.083-.776-.388-1.01l-1.004-.767a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.49l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+          </svg>
+          <span className="text-[10px]">Settings</span>
+        </button>
+      </div>
+
       {/* Main Container */}
-      <main className="flex-grow flex flex-col min-w-0">
+      <main className="flex-grow flex flex-col min-w-0 pb-20 md:pb-0">
         {/* Header Bar */}
         <header className="h-20 bg-white border-b border-slate-200 px-8 flex items-center justify-between shrink-0">
           <div>
