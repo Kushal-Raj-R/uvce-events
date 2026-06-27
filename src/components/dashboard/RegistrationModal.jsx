@@ -130,7 +130,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
     }));
   };
 
-  const handleCustomFileChange = async (e, field) => {
+  const handleCustomFieldFileUpload = async (e, fieldId) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -138,45 +138,59 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
     if (!file) return;
 
     const fileSizeInMB = file.size / (1024 * 1024);
-    const allowedLimit = field.max_size || 2;
+    const field = event?.custom_fields?.find(f => f.id === fieldId);
+    const allowedLimit = field?.max_size || 2;
+    const fieldLabel = field?.label || 'File';
 
     if (fileSizeInMB > allowedLimit) {
-      alert(`The file size for "${field.label}" must be under ${allowedLimit}MB. Your file is ${fileSizeInMB.toFixed(2)}MB.`);
+      alert(`The file size for "${fieldLabel}" must be under ${allowedLimit}MB. Your file is ${fileSizeInMB.toFixed(2)}MB.`);
       return;
     }
 
+    // 1. Instantly write a placeholder state to localStorage to prevent app-switch drops
+    const currentAnswers = JSON.parse(localStorage.getItem(`reg_answers_${event?.id}`) || '{}');
+    currentAnswers[`uploading_${fieldId}`] = true;
+    localStorage.setItem(`reg_answers_${event?.id}`, JSON.stringify(currentAnswers));
+    
+    setAnswers(prev => ({
+      ...prev,
+      [`uploading_${fieldId}`]: true
+    }));
+
     try {
-      setAnswers(prev => ({
-        ...prev,
-        [`uploading_${field.id}`]: true
-      }));
-
       const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `custom-fields/${fileName}`;
+      const fileName = `${Math.random()}_${Date.now()}.${fileExt}`;
+      const filePath = `student-uploads/${fileName}`;
 
+      // 2. Perform the upload to your Supabase storage bucket
       const { error: uploadError } = await supabase.storage
         .from('event-materials')
-        .upload(filePath, file);
+        .upload(filePath, file, { cacheControl: '3600', upsert: true });
 
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage
+      const { data: { publicUrl } } = supabase.storage
         .from('event-materials')
         .getPublicUrl(filePath);
 
-      setAnswers(prev => ({
-        ...prev,
-        [field.id]: urlData.publicUrl,
-        [`uploading_${field.id}`]: false
-      }));
+      // 3. SUCCESS STATE: Force save immediately to localStorage to survive any background kills
+      const updatedAnswers = JSON.parse(localStorage.getItem(`reg_answers_${event?.id}`) || '{}');
+      updatedAnswers[fieldId] = publicUrl;
+      updatedAnswers[`uploading_${fieldId}`] = false;
+      
+      localStorage.setItem(`reg_answers_${event?.id}`, JSON.stringify(updatedAnswers));
+
+      // Update local React view layer state
+      setAnswers(updatedAnswers);
+      alert("✓ File loaded successfully into registration memory!");
 
     } catch (error) {
-      console.error("File attachment failed safely:", error.message);
+      console.error("Upload process failure details:", error.message);
       alert(`Upload failed: ${error.message}`);
+      
       setAnswers(prev => ({
         ...prev,
-        [`uploading_${field.id}`]: false
+        [`uploading_${fieldId}`]: false
       }));
     }
   };
@@ -679,7 +693,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
                                       type="file"
                                       accept="application/pdf, image/*"
                                       className="hidden"
-                                      onChange={(e) => handleCustomFileChange(e, field)}
+                                      onChange={(e) => handleCustomFieldFileUpload(e, field.id)}
                                     />
                                   </label>
                                 </div>
