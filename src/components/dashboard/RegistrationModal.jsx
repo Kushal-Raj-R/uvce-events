@@ -342,7 +342,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
               </p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 flex flex-col overflow-hidden">
               <div className="p-6 overflow-y-auto flex-1 flex flex-col gap-6">
                 {errorMsg && (
                   <div className="p-3 bg-rose-50 text-rose-700 border border-rose-100 rounded-xl text-xs font-semibold">
@@ -655,7 +655,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
                     Next Step →
                   </button>
                 ) : (
-                  <button type="submit" disabled={loading} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl shadow-sm transition-all flex items-center gap-2">
+                  <button type="button" onClick={handleSubmit} disabled={loading} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl shadow-sm transition-all flex items-center gap-2">
                     {loading ? (
                       <>
                         <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
@@ -670,7 +670,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
                   </button>
                 )}
               </div>
-            </form>
+            </div>
           )}
         </div>
 
