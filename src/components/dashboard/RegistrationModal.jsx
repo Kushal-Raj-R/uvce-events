@@ -61,6 +61,16 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
   }, [event?.id]);
 
   useEffect(() => {
+    // 1. Tell the whole app to STOP auto-refreshing when this modal turns on
+    localStorage.setItem('block_global_refresh', 'true');
+    
+    return () => {
+      // 2. Turn auto-refresh back ON when this modal closes completely
+      localStorage.removeItem('block_global_refresh');
+    };
+  }, []);
+
+  useEffect(() => {
     // Fetch profile of the logged-in student to pre-fill/display
     async function fetchProfile() {
       const { data } = await supabase

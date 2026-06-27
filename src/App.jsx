@@ -53,6 +53,22 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const handleWindowFocusChange = () => {
+      const isFormActive = localStorage.getItem('block_global_refresh') === 'true';
+      
+      if (isFormActive) {
+        console.log("🔒 Registration form is open. Auto-refresh safely blocked.");
+        return;
+      }
+
+      console.log("🔄 No forms active. Running standard background sync...");
+    };
+
+    window.addEventListener('focus', handleWindowFocusChange);
+    return () => window.removeEventListener('focus', handleWindowFocusChange);
+  }, []);
+
   // Fetch the role of the user from public.profiles
   async function resolveUserRole(authUser, event) {
     if (!authUser) return;
