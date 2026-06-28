@@ -1417,7 +1417,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                         )}
                       </div>
 
-                      {showEventGraph ? (
+                      {showEventGraph && (
                         /* DYNAMIC MONTHLY GRAPH WINDOW OVERLAY */
                         <div className="p-5 bg-white border border-slate-200/60 rounded-3xl shadow-sm flex flex-col gap-4 animate-fade-in">
                           <div className="flex flex-col">
@@ -1435,11 +1435,6 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                               </BarChart>
                             </ResponsiveContainer>
                           </div>
-                        </div>
-                      ) : (
-                        /* FALLBACK PLACEHOLDER */
-                        <div className="p-5 bg-slate-50/50 border border-dashed border-slate-200 rounded-3xl text-center py-12">
-                          <p className="text-xs text-slate-400 italic">Select an indicator metric above to review deeper profile analytics data.</p>
                         </div>
                       )}
 
