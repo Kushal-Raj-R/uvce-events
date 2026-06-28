@@ -475,7 +475,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
     try {
       console.log("🧼 Starting comprehensive asset purge for Event ID:", event.id);
       
-      // 1. Purge all registration uploads in registration_files/<eventId>/ folder
+      // 1. Purge all registration uploads in registration_files/<eventId>/ folder (older folder format)
       const { data: regFiles } = await supabase.storage
         .from('registration_files')
         .list(String(event.id));
@@ -488,6 +488,36 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
           .remove(pathsToDelete);
         if (regStorageError) {
           console.warn("Error purging registration uploads:", regStorageError.message);
+        }
+      }
+
+      // 1b. Purge student-uploads files referenced in custom_answers
+      const { data: registrations } = await supabase
+        .from('registrations')
+        .select('custom_answers')
+        .eq('event_id', event.id);
+
+      if (registrations && registrations.length > 0) {
+        const studentPaths = [];
+        registrations.forEach(reg => {
+          if (reg.custom_answers) {
+            Object.values(reg.custom_answers).forEach(val => {
+              if (typeof val === 'string' && val.includes('/registration_files/student-uploads/')) {
+                const filePath = val.split('/registration_files/')[1];
+                if (filePath) studentPaths.push(filePath);
+              }
+            });
+          }
+        });
+
+        if (studentPaths.length > 0) {
+          console.log("🗑️ Purging custom answer student-uploads:", studentPaths);
+          const { error: regStorageError } = await supabase.storage
+            .from('registration_files')
+            .remove(studentPaths);
+          if (regStorageError) {
+            console.warn("Error purging custom answer uploads:", regStorageError.message);
+          }
         }
       }
 
@@ -507,11 +537,21 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
 
       // 3. Extract and purge the event attachment/statement URL (if it exists)
       if (event.attachment_url) {
-        const attachmentPath = event.attachment_url.split('/event-attachment/')[1];
-        if (attachmentPath) {
-          console.log("🗑️ Purging event attachment from storage:", attachmentPath);
+        let attachmentPath = null;
+        let bucketName = null;
+        
+        if (event.attachment_url.includes('/event-attachment/')) {
+          attachmentPath = event.attachment_url.split('/event-attachment/')[1];
+          bucketName = 'event-attachment';
+        } else if (event.attachment_url.includes('/event-materials/')) {
+          attachmentPath = event.attachment_url.split('/event-materials/')[1];
+          bucketName = 'event-materials';
+        }
+        
+        if (attachmentPath && bucketName) {
+          console.log(`🗑️ Purging event attachment from bucket '${bucketName}':`, attachmentPath);
           const { error: attachmentStorageError } = await supabase.storage
-            .from('event-attachment')
+            .from(bucketName)
             .remove([attachmentPath]);
           if (attachmentStorageError) {
             console.warn("Error purging event attachment:", attachmentStorageError.message);

@@ -277,7 +277,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
           }
 
           const fileExt = fileToUpload.name ? fileToUpload.name.split('.').pop() : 'png';
-          const filePath = `${event.id}/${crypto.randomUUID()}.${fileExt}`;
+          const filePath = `student-uploads/${Date.now()}_${fileToUpload.name || 'file.' + fileExt}`;
 
           if (isMockMode) {
             // Simulate storage upload in mock mode
