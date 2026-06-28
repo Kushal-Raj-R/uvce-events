@@ -817,10 +817,10 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                   </div>
 
                   {/* 2-Column Split */}
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                  <div className="w-full flex flex-col md:flex-row gap-6 items-start">
                     
                     {/* LEFT COLUMN: Create Event (7 cols) */}
-                    <div className="lg:col-span-7 bg-white border border-slate-200/60 rounded-3xl p-6 shadow-sm space-y-6">
+                    <div className="w-full md:w-3/5 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm order-2 md:order-1 space-y-6">
                       <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100">
                         <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
@@ -1283,7 +1283,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                     </div>
 
                     {/* RIGHT COLUMN: Statistics and Managed Table (5 cols) */}
-                    <div className="lg:col-span-5 space-y-6">
+                    <div className="w-full md:w-2/5 flex flex-col gap-6 order-1 md:order-2">
                       {/* STATS BLOCK */}
                       <div className="grid grid-cols-2 gap-4">
                         <div 
