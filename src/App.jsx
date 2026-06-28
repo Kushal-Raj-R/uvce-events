@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase, isMockMode } from './supabaseClient';
 import AuthScreen from './components/auth/AuthScreen';
 import StudentDashboard from './components/dashboard/StudentDashboard';
@@ -11,6 +11,12 @@ export default function App() {
   const [role, setRole] = useState(null); // 'student' | 'organizer'
   const [dbRole, setDbRole] = useState(null); // actual database role: 'student' | 'organizer'
   const [loading, setLoading] = useState(true);
+
+  const activeUserIdRef = useRef(null);
+
+  useEffect(() => {
+    activeUserIdRef.current = user?.id;
+  }, [user]);
 
   useEffect(() => {
     // 0. Recover crashed mobile registration session
@@ -60,6 +66,16 @@ export default function App() {
           setUser(newSession.user);
         }
         return; 
+      }
+
+      // Safeguard against refocus/same-session triggers that unmount the UI:
+      // If we already have a logged-in user and the session hasn't changed to logged-out or another user,
+      // update the session/user details silently without setting loading = true.
+      if (newSession && newSession.user && activeUserIdRef.current === newSession.user.id) {
+        console.log("🛡️ Re-focus/Same user session verification. Blocking loader layout flash.");
+        setSession(newSession);
+        setUser(newSession.user);
+        return;
       }
 
       setLoading(true);

@@ -5,19 +5,79 @@ import imageCompression from 'browser-image-compression';
 export default function RegistrationModal({ event, user, onClose, onSuccess, onRefresh }) {
   const [profile, setProfile] = useState(null);
   const [answers, setAnswers] = useState(() => {
-    const saved = localStorage.getItem(`reg_answers_${event?.id}`);
+    const draftStr = event?.id ? sessionStorage.getItem(`eventRegistrationDraft:${event.id}`) : null;
+    if (draftStr) {
+      try {
+        const draft = JSON.parse(draftStr);
+        if (draft.answers) return draft.answers;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    const saved = event?.id ? localStorage.getItem(`reg_answers_${event.id}`) : null;
     return saved ? JSON.parse(saved) : {};
   });
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [success, setSuccess] = useState(false);
   const [friendsList, setFriendsList] = useState([]);
-  const [selectedTeammates, setSelectedTeammates] = useState([]);
-  const [teamName, setTeamName] = useState('');
+  const [selectedTeammates, setSelectedTeammates] = useState(() => {
+    const draftStr = event?.id ? sessionStorage.getItem(`eventRegistrationDraft:${event.id}`) : null;
+    if (draftStr) {
+      try {
+        const draft = JSON.parse(draftStr);
+        if (draft.selectedTeammates) return draft.selectedTeammates;
+      } catch {}
+    }
+    return [];
+  });
+  const [teamName, setTeamName] = useState(() => {
+    const draftStr = event?.id ? sessionStorage.getItem(`eventRegistrationDraft:${event.id}`) : null;
+    if (draftStr) {
+      try {
+        const draft = JSON.parse(draftStr);
+        if (draft.teamName) return draft.teamName;
+      } catch {}
+    }
+    return '';
+  });
   const [currentStep, setCurrentStep] = useState(() => {
+    const draftStr = event?.id ? sessionStorage.getItem(`eventRegistrationDraft:${event.id}`) : null;
+    if (draftStr) {
+      try {
+        const draft = JSON.parse(draftStr);
+        if (draft.currentStep) return draft.currentStep;
+      } catch {}
+    }
     const savedStep = localStorage.getItem('active_wizard_step');
     return savedStep ? parseInt(savedStep, 10) : 1;
   });
+
+  // Automatically save form draft state to sessionStorage on every change
+  useEffect(() => {
+    if (!event?.id) return;
+    
+    const draft = {
+      currentStep,
+      teamName,
+      selectedTeammates,
+      answers: {}
+    };
+    
+    Object.keys(answers).forEach(key => {
+      const val = answers[key];
+      if (val instanceof File) {
+        draft.answers[key] = {
+          fileName: val.name,
+          fileAttachedPlaceholder: true
+        };
+      } else {
+        draft.answers[key] = val;
+      }
+    });
+    
+    sessionStorage.setItem(`eventRegistrationDraft:${event.id}`, JSON.stringify(draft));
+  }, [currentStep, teamName, selectedTeammates, answers, event?.id]);
 
   const handleStepNavigation = (targetStep) => {
     setCurrentStep(targetStep);
@@ -27,13 +87,19 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
   const handleClose = () => {
     localStorage.removeItem('active_wizard_step');
     localStorage.removeItem(`reg_answers_${event?.id}`);
+    if (event?.id) {
+      sessionStorage.removeItem(`eventRegistrationDraft:${event.id}`);
+    }
     onClose();
   };
 
   useEffect(() => {
-    const savedStep = localStorage.getItem('active_wizard_step');
-    if (!savedStep) {
-      setCurrentStep(1);
+    const draftStr = event?.id ? sessionStorage.getItem(`eventRegistrationDraft:${event.id}`) : null;
+    if (!draftStr) {
+      const savedStep = localStorage.getItem('active_wizard_step');
+      if (!savedStep) {
+        setCurrentStep(1);
+      }
     }
     setSuccess(false);
     setErrorMsg('');
@@ -166,6 +232,11 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
         setLoading(false);
         return;
       }
+      if (field.type === 'file' && ans.fileAttachedPlaceholder) {
+        setErrorMsg(`Please re-select the file for "${field.label}" to proceed.`);
+        setLoading(false);
+        return;
+      }
     }
 
     // Process file uploads
@@ -287,6 +358,10 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
       setSuccess(true);
       setLoading(false);
       localStorage.removeItem('active_wizard_step');
+      localStorage.removeItem(`reg_answers_${event?.id}`);
+      if (event?.id) {
+        sessionStorage.removeItem(`eventRegistrationDraft:${event.id}`);
+      }
       if (typeof onRefresh === 'function') {
         onRefresh();
       }
@@ -601,13 +676,28 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
                                 className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs resize-none"
                               />
                             ) : field.type === 'file' ? (
-                              <input
-                                type="file"
-                                accept="application/pdf, image/*"
-                                required
-                                onChange={(e) => handleCustomFileChange(e, field)}
-                                className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs bg-white"
-                              />
+                              <div className="space-y-1.5">
+                                <input
+                                  type="file"
+                                  accept="application/pdf, image/*"
+                                  required={!answers[field.id]}
+                                  onChange={(e) => handleCustomFileChange(e, field)}
+                                  className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs bg-white"
+                                />
+                                {answers[field.id] && (
+                                  <div className="text-[11px] font-semibold flex items-center gap-1.5">
+                                    {answers[field.id].fileAttachedPlaceholder ? (
+                                      <span className="text-amber-600 flex items-center gap-1">
+                                        ⚠️ File Selected: <strong>{answers[field.id].fileName}</strong> (Please re-select file after reload)
+                                      </span>
+                                    ) : (
+                                      <span className="text-emerald-600 flex items-center gap-1">
+                                        ✅ Attached: <strong>{answers[field.id].name || answers[field.id].fileName}</strong>
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             ) : (
                               <input
                                 type="text"
