@@ -465,16 +465,71 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
     }
   };
 
-  // Delete event
-  const handleDeleteEvent = async (eventId) => {
-    if (!window.confirm('Are you sure you want to delete this event? This will delete all registrations as well.')) return;
+  // Delete event and cascade clear associated files in Supabase storage
+  const handleDeleteEvent = async (eventId, bannerUrl, attachmentUrl) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this event? All student registrations and uploaded PDFs/images will be deleted permanently.");
+    if (!confirmDelete) return;
 
-    const { error } = await supabase.from('events').delete().eq('id', eventId);
+    try {
+      console.log("🧼 Starting cascade storage cleanup for Event ID:", eventId);
+      
+      // 1. Purge all registration uploads in registration_files/<eventId>/ folder
+      const { data: regFiles } = await supabase.storage
+        .from('registration_files')
+        .list(String(eventId));
+      
+      if (regFiles && regFiles.length > 0) {
+        const pathsToDelete = regFiles.map(file => `${eventId}/${file.name}`);
+        console.log("🗑️ Purging registration uploads:", pathsToDelete);
+        const { error: regStorageError } = await supabase.storage
+          .from('registration_files')
+          .remove(pathsToDelete);
+        if (regStorageError) {
+          console.warn("Error purging registration uploads:", regStorageError.message);
+        }
+      }
 
-    if (error) {
-      alert('Failed to delete event: ' + error.message);
-    } else {
+      // 2. Extract and purge the file path from the main event banner URL (if it exists)
+      if (bannerUrl) {
+        const bannerPath = bannerUrl.split('/registration_files/')[1];
+        if (bannerPath) {
+          console.log("🗑️ Purging banner from storage:", bannerPath);
+          const { error: bannerStorageError } = await supabase.storage
+            .from('registration_files')
+            .remove([bannerPath]);
+          if (bannerStorageError) {
+            console.warn("Error purging banner:", bannerStorageError.message);
+          }
+        }
+      }
+
+      // 3. Extract and purge the event attachment/statement URL (if it exists)
+      if (attachmentUrl) {
+        const attachmentPath = attachmentUrl.split('/event-attachment/')[1];
+        if (attachmentPath) {
+          console.log("🗑️ Purging event attachment from storage:", attachmentPath);
+          const { error: attachmentStorageError } = await supabase.storage
+            .from('event-attachment')
+            .remove([attachmentPath]);
+          if (attachmentStorageError) {
+            console.warn("Error purging event attachment:", attachmentStorageError.message);
+          }
+        }
+      }
+
+      // 4. Delete the event row from the database table
+      const { error: dbDeleteError } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', eventId);
+
+      if (dbDeleteError) throw dbDeleteError;
+
+      alert("✓ Event and all associated files deleted successfully!");
       fetchOrganizerData();
+
+    } catch (err) {
+      alert(`Deletion routine encountered an error: ${err.message}`);
     }
   };
 
@@ -1320,7 +1375,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                                         </>
                                       )}
                                       <button
-                                        onClick={() => handleDeleteEvent(event.id)}
+                                        onClick={() => handleDeleteEvent(event.id, event.banner_path, event.attachment_url)}
                                         title="Delete Event"
                                         className="p-1 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded"
                                       >
