@@ -746,6 +746,17 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
               )}
             </div>
 
+            {/* THE STEP-DOWN SWITCHER: Force displays everywhere, styled larger on touch inputs */}
+            {canSwitchRole && (
+              <button
+                type="button"
+                onClick={onSwitchRole}
+                className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer border border-slate-200/60 active:scale-95"
+              >
+                🎓 <span className="inline">Switch to Student</span>
+              </button>
+            )}
+
             {/* ================= USER PROFILE DROPDOWN (YELLOW ICON ACTION) ================= */}
             <div className="relative flex items-center gap-2 pl-4 border-l border-slate-200">
               <button 
