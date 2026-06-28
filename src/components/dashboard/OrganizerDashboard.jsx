@@ -1277,20 +1277,23 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                       <div className="grid grid-cols-2 gap-4">
                         <div 
                           onClick={() => setShowEventGraph(!showEventGraph)}
-                          className={`p-5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between h-32 ${
+                          className={`p-6 rounded-2xl border transition-all cursor-pointer select-none flex flex-col justify-between h-32 ${
                             showEventGraph 
-                              ? 'bg-primary-50/30 border-primary-300 shadow-inner' 
-                              : 'bg-white border-slate-200/60 hover:border-slate-300 shadow-sm'
+                              ? 'bg-blue-50/60 border-blue-200 shadow-sm' 
+                              : 'bg-white border-slate-200/60 hover:border-slate-300 hover:bg-slate-50/50 shadow-sm'
                           }`}
                         >
-                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Total Active</span>
-                          <span className="text-3xl font-black text-slate-800">{totalActiveEvents}</span>
-                          <p className="text-[9px] text-primary-500 font-semibold mt-2">
-                            {showEventGraph ? "📊 Click to collapse chart" : "📈 Click to view monthly analysis trend"}
-                          </p>
+                          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                            Total Active
+                          </span>
+                          <div className="flex items-baseline gap-2 mt-2">
+                            <h1 className="text-4xl font-extrabold text-slate-800">
+                              {totalActiveEvents}
+                            </h1>
+                          </div>
                         </div>
 
-                        <div className="p-5 bg-white rounded-2xl border border-slate-200/60 shadow-sm flex flex-col justify-between h-32">
+                        <div className="p-6 bg-white rounded-2xl border border-slate-200/60 shadow-sm flex flex-col justify-between h-32">
                           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
                             Total Registrations
                           </span>
