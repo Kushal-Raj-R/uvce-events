@@ -82,6 +82,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Form State for Event Creation
   const [eventTitle, setEventTitle] = useState('');
@@ -467,12 +468,15 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
 
   // Delete event and cascade clear associated files in Supabase storage via Edge Function
   const handleDeleteEvent = async (event) => {
+    if (isDeleting) return;
+
     const confirmDelete = window.confirm(
       "Are you sure you want to delete this event? This will permanently delete the event, all student registrations, and all uploaded PDFs/Banners from both organizers and students."
     );
     if (!confirmDelete) return;
 
     try {
+      setIsDeleting(true);
       if (isMockMode) {
         // Simulate cascade deletion in mock mode
         await new Promise(resolve => setTimeout(resolve, 800));
@@ -513,6 +517,8 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
 
     } catch (err) {
       alert(`Cascade deletion failed: ${err.message}`);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -1359,8 +1365,13 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                                       )}
                                       <button
                                         onClick={() => handleDeleteEvent(event)}
-                                        title="Delete Event"
-                                        className="p-1 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded"
+                                        disabled={isDeleting}
+                                        title={isDeleting ? "Deleting..." : "Delete Event"}
+                                        className={`p-1 rounded transition-all ${
+                                          isDeleting 
+                                            ? "opacity-50 cursor-not-allowed text-slate-300" 
+                                            : "hover:bg-rose-50 text-slate-400 hover:text-rose-600"
+                                        }`}
                                       >
                                         <TrashIcon className="w-3.5 h-3.5" />
                                       </button>
