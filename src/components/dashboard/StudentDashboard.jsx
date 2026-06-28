@@ -604,17 +604,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
           </nav>
         </div>
 
-        {/* Sidebar Footer Controls */}
         <div className="space-y-4 pt-6 border-t border-slate-100">
-          {/* Switch Role shortcut */}
-          {canSwitchRole && (
-            <button
-              onClick={onSwitchRole}
-              className="w-full border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold py-2 px-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-2"
-            >
-              Switch to Organizer
-            </button>
-          )}
           
           {/* Sign Out */}
           <button

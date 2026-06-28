@@ -631,16 +631,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
           </nav>
         </div>
 
-        {/* Switch Role shortcut */}
         <div className="space-y-4 pt-6 border-t border-slate-100">
-          {canSwitchRole && (
-            <button
-              onClick={onSwitchRole}
-              className="w-full border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold py-2 px-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-2"
-            >
-              Switch to Student
-            </button>
-          )}
           <button
             onClick={onSignOut}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-rose-500 hover:bg-rose-50/50 transition-all"
@@ -870,26 +861,33 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                           />
                         </div>
 
-                        {/* Date, Location, and Participation Type */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                          <div className="space-y-1.5">
-                            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">REGISTRATION DEADLINE</label>
+                        {/* FORM INPUTS CONFIGURATION ROW MATRIX */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end w-full mt-4">
+                          
+                          {/* FIELD 1: REGISTRATION DEADLINE */}
+                          <div className="flex flex-col gap-1.5 w-full">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                              Registration Deadline
+                            </label>
                             <input
                               type="datetime-local"
                               name="registration_deadline"
                               required
                               value={registrationDeadline}
                               onChange={(e) => setRegistrationDeadline(e.target.value)}
-                              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs bg-white"
+                              className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 font-medium focus:outline-none focus:border-blue-500 transition-all shadow-sm"
                             />
                           </div>
 
-                          <div className="space-y-1.5">
-                            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Location Type</label>
+                          {/* FIELD 2: LOCATION TYPE */}
+                          <div className="flex flex-col gap-1.5 w-full">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                              Location Type
+                            </label>
                             <select
                               value={locationType}
                               onChange={(e) => setLocationType(e.target.value)}
-                              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs bg-white"
+                              className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 font-medium focus:outline-none focus:border-blue-500 transition-all shadow-sm appearance-none cursor-pointer"
                             >
                               <option value="In-Person">In-Person</option>
                               <option value="Virtual">Virtual</option>
@@ -897,18 +895,22 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                             </select>
                           </div>
 
-                          <div className="space-y-1.5">
-                            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Participation Type</label>
+                          {/* FIELD 3: PARTICIPATION TYPE */}
+                          <div className="flex flex-col gap-1.5 w-full">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                              Participation Type
+                            </label>
                             <select
                               name="participation_type"
                               value={participationType}
                               onChange={(e) => setParticipationType(e.target.value)}
-                              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs bg-white"
+                              className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 font-medium focus:outline-none focus:border-blue-500 transition-all shadow-sm appearance-none cursor-pointer"
                             >
                               <option value="Solo">Solo (Individual)</option>
                               <option value="Team">Team Event</option>
                             </select>
                           </div>
+
                         </div>
 
                         {participationType === 'Team' && (
