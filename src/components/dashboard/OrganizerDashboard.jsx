@@ -465,123 +465,51 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
     }
   };
 
-  // Delete event and cascade clear associated files in Supabase storage
+  // Delete event and cascade clear associated files in Supabase storage via Edge Function
   const handleDeleteEvent = async (event) => {
     const confirmDelete = window.confirm(
       "Are you sure you want to delete this event? This will permanently delete the event, all student registrations, and all uploaded PDFs/Banners from both organizers and students."
     );
     if (!confirmDelete) return;
 
-    // Helper function to safely extract [bucket_name, file_path] from ANY Supabase public URL
-    const parseSupabaseUrl = (url) => {
-      if (!url || !url.includes('/storage/v1/object/public/')) return null;
-      try {
-        // Split at the public identifier root
-        const parts = url.split('/storage/v1/object/public/')[1];
-        // The first segment is the bucket name, the rest is the file path inside it
-        const firstSlashIndex = parts.indexOf('/');
-        const bucketName = parts.substring(0, firstSlashIndex);
-        const filePath = parts.substring(firstSlashIndex + 1);
-        return { bucketName, filePath };
-      } catch (e) {
-        console.error("Failed to parse URL:", url, e);
-        return null;
-      }
-    };
-
     try {
-      console.log("🧼 Starting comprehensive asset purge for Event ID:", event.id);
+      if (isMockMode) {
+        // Simulate cascade deletion in mock mode
+        await new Promise(resolve => setTimeout(resolve, 800));
+        const { error: dbDeleteError } = await supabase
+          .from('events')
+          .delete()
+          .eq('id', event.id);
 
-      // Track file paths grouped by their specific bucket name
-      const purgeQueue = {
-        'event-materials': [],
-        'event-attachment': [],
-        'registration_files': []
-      };
+        if (dbDeleteError) throw dbDeleteError;
+        alert("✓ Event deleted successfully (Mock mode)!");
+        fetchOrganizerData();
+        return;
+      }
 
-      const enqueueUrl = (url) => {
-        const info = parseSupabaseUrl(url);
-        if (info && purgeQueue[info.bucketName]) {
-          purgeQueue[info.bucketName].push(info.filePath);
+      console.log("🚀 Invoking cascade delete Edge Function for Event ID:", event.id);
+      
+      const { data, error } = await supabase.functions.invoke('delete-event-cascade', {
+        body: { event_id: event.id }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to invoke edge function');
+      }
+
+      if (data?.success) {
+        let successMessage = "✓ Event and all associated organizer/student assets successfully deleted!";
+        if (data.failedPurges) {
+          successMessage += "\n\n⚠️ Note: Some files could not be removed from storage (they may have already been missing or deleted):";
+          Object.keys(data.failedPurges).forEach(bucket => {
+            successMessage += `\n- Bucket [${bucket}]: ${data.failedPurges[bucket].length} file(s)`;
+          });
         }
-      };
-
-      // 1. Parse Event Banner URL
-      if (event.banner_path) {
-        enqueueUrl(event.banner_path);
+        alert(successMessage);
+        fetchOrganizerData();
+      } else {
+        throw new Error(data?.error || 'Edge function returned failure status');
       }
-      if (event.banner_url) {
-        enqueueUrl(event.banner_url);
-      }
-
-      // 2. Parse Organizer PDF URL
-      if (event.attachment_url) {
-        enqueueUrl(event.attachment_url);
-      }
-      if (event.organizer_pdf_url) {
-        enqueueUrl(event.organizer_pdf_url);
-      }
-
-      // 3. Fetch Student Registrations linked to this event
-      const { data: registrations, error: fetchError } = await supabase
-        .from('registrations')
-        .select('custom_answers')
-        .eq('event_id', event.id);
-
-      if (fetchError) throw fetchError;
-
-      // 4. Parse each student upload URL from custom answers into its correct bucket slot
-      if (registrations && registrations.length > 0) {
-        registrations.forEach(reg => {
-          if (reg.custom_answers) {
-            Object.values(reg.custom_answers).forEach(val => {
-              if (typeof val === 'string' && val.includes('/storage/v1/object/public/')) {
-                enqueueUrl(val);
-              }
-            });
-          }
-        });
-      }
-
-      // 4b. Also list and purge all files inside older event ID folder format in registration_files
-      const { data: folderFiles } = await supabase.storage
-        .from('registration_files')
-        .list(String(event.id));
-
-      if (folderFiles && folderFiles.length > 0) {
-        folderFiles.forEach(file => {
-          const filePath = `${event.id}/${file.name}`;
-          if (!purgeQueue['registration_files'].includes(filePath)) {
-            purgeQueue['registration_files'].push(filePath);
-          }
-        });
-      }
-
-      // 5. Fire separate delete commands for each bucket container
-      for (const bucketName of Object.keys(purgeQueue)) {
-        const files = purgeQueue[bucketName];
-        if (files.length > 0) {
-          console.log(`🗑️ Removing files from bucket [${bucketName}]:`, files);
-          const { error: storageError } = await supabase.storage
-            .from(bucketName)
-            .remove(files);
-
-          if (storageError) {
-            console.warn(`Bucket [${bucketName}] cleanup warning:`, storageError.message);
-          }
-        }
-      }
-
-      // 6. Delete the primary event row from the database table
-      const { error: dbDeleteError } = await supabase
-        .from('events')
-        .delete()
-        .eq('id', event.id);
-
-      if (dbDeleteError) throw dbDeleteError;
-
-      alert("✓ Event and all associated organizer/student assets successfully deleted!");
-      fetchOrganizerData();
 
     } catch (err) {
       alert(`Cascade deletion failed: ${err.message}`);
