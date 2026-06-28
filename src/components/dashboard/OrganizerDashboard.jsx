@@ -1,5 +1,6 @@
 // src/components/dashboard/OrganizerDashboard.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase, isMockMode } from '../../supabaseClient';
 import { 
   DashboardIcon, 
@@ -8,7 +9,6 @@ import {
   BellIcon, 
   SettingsIcon,
   PlusIcon,
-  SparklesIcon,
   TrashIcon,
   EditIcon,
   DragIcon,
@@ -83,6 +83,23 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showEventGraph, setShowEventGraph] = useState(false);
+
+  // Process existing events list into monthly aggregates dynamically
+  const monthlyGraphData = useMemo(() => {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const chartMap = months.map(m => ({ name: m, "Total Events": 0 }));
+    
+    events?.forEach(event => {
+      if (event.created_at) {
+        const date = new Date(event.created_at);
+        const monthIdx = date.getMonth(); // 0-11
+        chartMap[monthIdx]["Total Events"] += 1;
+      }
+    });
+    
+    return chartMap;
+  }, [events]);
 
   // Form State for Event Creation
   const [eventTitle, setEventTitle] = useState('');
@@ -540,11 +557,6 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
   // Statistics calculation
   const totalActiveEvents = events.filter(e => e.status === 'OPEN').length;
   const totalRegistrations = registrations.length;
-
-  const startOfMonth = new Date();
-  startOfMonth.setDate(1);
-  startOfMonth.setHours(0,0,0,0);
-  const eventsCreatedThisMonth = events.filter(e => new Date(e.created_at) >= startOfMonth).length;
 
 
   
@@ -1263,19 +1275,26 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                     <div className="lg:col-span-5 space-y-6">
                       {/* STATS BLOCK */}
                       <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm flex flex-col justify-between h-32">
+                        <div 
+                          onClick={() => setShowEventGraph(!showEventGraph)}
+                          className={`p-5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between h-32 ${
+                            showEventGraph 
+                              ? 'bg-primary-50/30 border-primary-300 shadow-inner' 
+                              : 'bg-white border-slate-200/60 hover:border-slate-300 shadow-sm'
+                          }`}
+                        >
                           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Total Active</span>
                           <span className="text-3xl font-black text-slate-800">{totalActiveEvents}</span>
-                          <span className="text-[10px] text-emerald-500 font-semibold flex items-center gap-0.5 mt-2">
-                            <span>▲</span> +{eventsCreatedThisMonth} this month
-                          </span>
+                          <p className="text-[9px] text-primary-500 font-semibold mt-2">
+                            {showEventGraph ? "📊 Click to collapse chart" : "📈 Click to view monthly analysis trend"}
+                          </p>
                         </div>
 
-                        <div className="p-6 bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between h-32">
-                          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        <div className="p-5 bg-white rounded-2xl border border-slate-200/60 shadow-sm flex flex-col justify-between h-32">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
                             Total Registrations
                           </span>
-                          <h2 className="text-4xl font-black text-slate-800 mt-2">
+                          <h2 className="text-3xl font-black text-slate-800">
                             {totalRegistrations.toLocaleString()}
                           </h2>
                         </div>
@@ -1384,16 +1403,31 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                         )}
                       </div>
 
-                      {/* OPTIMIZATION TIP CARD */}
-                      <div className="bg-primary-50/50 border border-primary-100 rounded-3xl p-5 flex items-start gap-3">
-                        <SparklesIcon className="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
-                        <div>
-                          <h5 className="font-bold text-primary-900 text-xs">Optimization Tip</h5>
-                          <p className="text-[11px] text-primary-700/80 leading-relaxed mt-1">
-                            Events with custom registration fields see a 15% higher completion rate when limited to 3 questions.
-                          </p>
+                      {showEventGraph ? (
+                        /* DYNAMIC MONTHLY GRAPH WINDOW OVERLAY */
+                        <div className="p-5 bg-white border border-slate-200/60 rounded-3xl shadow-sm flex flex-col gap-4 animate-fade-in">
+                          <div className="flex flex-col">
+                            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Events Distribution</h3>
+                            <p className="text-[10px] text-slate-400 mt-0.5">Total metrics plotted across calendar months</p>
+                          </div>
+                          
+                          <div className="w-full h-48 mt-2">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={monthlyGraphData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                                <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                                <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ fontSize: '11px', borderRadius: '8px' }} />
+                                <Bar dataKey="Total Events" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        /* FALLBACK PLACEHOLDER */
+                        <div className="p-5 bg-slate-50/50 border border-dashed border-slate-200 rounded-3xl text-center py-12">
+                          <p className="text-xs text-slate-400 italic">Select an indicator metric above to review deeper profile analytics data.</p>
+                        </div>
+                      )}
 
                     </div>
 
