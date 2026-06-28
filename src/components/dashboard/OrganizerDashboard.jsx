@@ -466,20 +466,22 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
   };
 
   // Delete event and cascade clear associated files in Supabase storage
-  const handleDeleteEvent = async (eventId, bannerUrl, attachmentUrl) => {
-    const confirmDelete = window.confirm("Are you sure you want to delete this event? All student registrations and uploaded PDFs/images will be deleted permanently.");
+  const handleDeleteEvent = async (event) => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this event? This will permanently delete the event, all student registrations, and all uploaded PDFs/Banners from both organizers and students."
+    );
     if (!confirmDelete) return;
 
     try {
-      console.log("🧼 Starting cascade storage cleanup for Event ID:", eventId);
+      console.log("🧼 Starting comprehensive asset purge for Event ID:", event.id);
       
       // 1. Purge all registration uploads in registration_files/<eventId>/ folder
       const { data: regFiles } = await supabase.storage
         .from('registration_files')
-        .list(String(eventId));
+        .list(String(event.id));
       
       if (regFiles && regFiles.length > 0) {
-        const pathsToDelete = regFiles.map(file => `${eventId}/${file.name}`);
+        const pathsToDelete = regFiles.map(file => `${event.id}/${file.name}`);
         console.log("🗑️ Purging registration uploads:", pathsToDelete);
         const { error: regStorageError } = await supabase.storage
           .from('registration_files')
@@ -490,8 +492,8 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
       }
 
       // 2. Extract and purge the file path from the main event banner URL (if it exists)
-      if (bannerUrl) {
-        const bannerPath = bannerUrl.split('/registration_files/')[1];
+      if (event.banner_path) {
+        const bannerPath = event.banner_path.split('/registration_files/')[1];
         if (bannerPath) {
           console.log("🗑️ Purging banner from storage:", bannerPath);
           const { error: bannerStorageError } = await supabase.storage
@@ -504,8 +506,8 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
       }
 
       // 3. Extract and purge the event attachment/statement URL (if it exists)
-      if (attachmentUrl) {
-        const attachmentPath = attachmentUrl.split('/event-attachment/')[1];
+      if (event.attachment_url) {
+        const attachmentPath = event.attachment_url.split('/event-attachment/')[1];
         if (attachmentPath) {
           console.log("🗑️ Purging event attachment from storage:", attachmentPath);
           const { error: attachmentStorageError } = await supabase.storage
@@ -521,15 +523,15 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
       const { error: dbDeleteError } = await supabase
         .from('events')
         .delete()
-        .eq('id', eventId);
+        .eq('id', event.id);
 
       if (dbDeleteError) throw dbDeleteError;
 
-      alert("✓ Event and all associated files deleted successfully!");
+      alert("✓ Event and all associated organizer/student assets successfully deleted!");
       fetchOrganizerData();
 
     } catch (err) {
-      alert(`Deletion routine encountered an error: ${err.message}`);
+      alert(`Cascade deletion failed: ${err.message}`);
     }
   };
 
@@ -1375,7 +1377,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                                         </>
                                       )}
                                       <button
-                                        onClick={() => handleDeleteEvent(event.id, event.banner_path, event.attachment_url)}
+                                        onClick={() => handleDeleteEvent(event)}
                                         title="Delete Event"
                                         className="p-1 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded"
                                       >
