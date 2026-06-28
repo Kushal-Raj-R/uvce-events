@@ -81,7 +81,7 @@ serve(async (req) => {
         const parts = url.split('/storage/v1/object/public/')[1]
         const firstSlashIndex = parts.indexOf('/')
         const bucketName = parts.substring(0, firstSlashIndex)
-        const filePath = parts.substring(firstSlashIndex + 1)
+        const filePath = decodeURIComponent(parts.substring(firstSlashIndex + 1))
         return { bucketName, filePath }
       } catch {
         return null
