@@ -13,6 +13,22 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // 0. Recover crashed mobile registration session
+    const recoverCrashedMobileSession = () => {
+      const cachedAnswersKey = Object.keys(localStorage).find(key => key.startsWith('reg_answers_'));
+      if (cachedAnswersKey) {
+        const eventId = cachedAnswersKey.split('_')[2];
+        console.log(`⚠️ Mobile Recovery Detected: Restoring crashed registration form for Event ${eventId}`);
+        
+        // Force the app to stay on the student portal view
+        localStorage.setItem('active_portal_role', 'student');
+        
+        // Force the dashboard to stay on the active registration page tab (upcoming/events)
+        localStorage.setItem('portal_active_tab', 'upcoming');
+      }
+    };
+    recoverCrashedMobileSession();
+
     // 1. Check current session on mount
     async function checkSession() {
       setLoading(true);

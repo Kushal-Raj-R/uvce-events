@@ -48,10 +48,24 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
     return '';
   };
   
-  // Registration Modal State
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [expandedRegId, setExpandedRegId] = useState(null);
   const [uploadingRegId, setUploadingRegId] = useState(null);
+
+  // Recover registration modal state from localStorage if application reloads
+  useEffect(() => {
+    if (events && events.length > 0 && !selectedEvent) {
+      const cachedAnswersKey = Object.keys(localStorage).find(key => key.startsWith('reg_answers_'));
+      if (cachedAnswersKey) {
+        const eventId = cachedAnswersKey.split('_')[2];
+        const activeEventMatch = events.find(e => String(e.id) === String(eventId));
+        if (activeEventMatch) {
+          console.log(`🔌 Restoring active registration modal for Event: ${activeEventMatch.title}`);
+          setSelectedEvent(activeEventMatch);
+        }
+      }
+    }
+  }, [events, selectedEvent]);
 
   // Connections and Friends State
   const [connectedFriends, setConnectedFriends] = useState([]);

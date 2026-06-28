@@ -4,7 +4,10 @@ import imageCompression from 'browser-image-compression';
 
 export default function RegistrationModal({ event, user, onClose, onSuccess, onRefresh }) {
   const [profile, setProfile] = useState(null);
-  const [answers, setAnswers] = useState({});
+  const [answers, setAnswers] = useState(() => {
+    const saved = localStorage.getItem(`reg_answers_${event?.id}`);
+    return saved ? JSON.parse(saved) : {};
+  });
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [success, setSuccess] = useState(false);
@@ -23,6 +26,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
 
   const handleClose = () => {
     localStorage.removeItem('active_wizard_step');
+    localStorage.removeItem(`reg_answers_${event?.id}`);
     onClose();
   };
 
@@ -100,10 +104,14 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
   }, [event, user]);
 
   const handleCustomFieldChange = (fieldId, value) => {
-    setAnswers(prev => ({
-      ...prev,
-      [fieldId]: value
-    }));
+    setAnswers(prev => {
+      const updated = {
+        ...prev,
+        [fieldId]: value
+      };
+      localStorage.setItem(`reg_answers_${event?.id}`, JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const handleCustomFileChange = (e, questionConfig) => {
