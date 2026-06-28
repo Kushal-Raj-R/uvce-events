@@ -472,94 +472,107 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
     );
     if (!confirmDelete) return;
 
+    // Helper function to safely extract [bucket_name, file_path] from ANY Supabase public URL
+    const parseSupabaseUrl = (url) => {
+      if (!url || !url.includes('/storage/v1/object/public/')) return null;
+      try {
+        // Split at the public identifier root
+        const parts = url.split('/storage/v1/object/public/')[1];
+        // The first segment is the bucket name, the rest is the file path inside it
+        const firstSlashIndex = parts.indexOf('/');
+        const bucketName = parts.substring(0, firstSlashIndex);
+        const filePath = parts.substring(firstSlashIndex + 1);
+        return { bucketName, filePath };
+      } catch (e) {
+        console.error("Failed to parse URL:", url, e);
+        return null;
+      }
+    };
+
     try {
       console.log("🧼 Starting comprehensive asset purge for Event ID:", event.id);
-      
-      // 1. Purge all registration uploads in registration_files/<eventId>/ folder (older folder format)
-      const { data: regFiles } = await supabase.storage
-        .from('registration_files')
-        .list(String(event.id));
-      
-      if (regFiles && regFiles.length > 0) {
-        const pathsToDelete = regFiles.map(file => `${event.id}/${file.name}`);
-        console.log("🗑️ Purging registration uploads:", pathsToDelete);
-        const { error: regStorageError } = await supabase.storage
-          .from('registration_files')
-          .remove(pathsToDelete);
-        if (regStorageError) {
-          console.warn("Error purging registration uploads:", regStorageError.message);
+
+      // Track file paths grouped by their specific bucket name
+      const purgeQueue = {
+        'event-materials': [],
+        'event-attachment': [],
+        'registration_files': []
+      };
+
+      const enqueueUrl = (url) => {
+        const info = parseSupabaseUrl(url);
+        if (info && purgeQueue[info.bucketName]) {
+          purgeQueue[info.bucketName].push(info.filePath);
         }
+      };
+
+      // 1. Parse Event Banner URL
+      if (event.banner_path) {
+        enqueueUrl(event.banner_path);
+      }
+      if (event.banner_url) {
+        enqueueUrl(event.banner_url);
       }
 
-      // 1b. Purge student-uploads files referenced in custom_answers
-      const { data: registrations } = await supabase
+      // 2. Parse Organizer PDF URL
+      if (event.attachment_url) {
+        enqueueUrl(event.attachment_url);
+      }
+      if (event.organizer_pdf_url) {
+        enqueueUrl(event.organizer_pdf_url);
+      }
+
+      // 3. Fetch Student Registrations linked to this event
+      const { data: registrations, error: fetchError } = await supabase
         .from('registrations')
         .select('custom_answers')
         .eq('event_id', event.id);
 
+      if (fetchError) throw fetchError;
+
+      // 4. Parse each student upload URL from custom answers into its correct bucket slot
       if (registrations && registrations.length > 0) {
-        const studentPaths = [];
         registrations.forEach(reg => {
           if (reg.custom_answers) {
             Object.values(reg.custom_answers).forEach(val => {
-              if (typeof val === 'string' && val.includes('/registration_files/student-uploads/')) {
-                const filePath = val.split('/registration_files/')[1];
-                if (filePath) studentPaths.push(filePath);
+              if (typeof val === 'string' && val.includes('/storage/v1/object/public/')) {
+                enqueueUrl(val);
               }
             });
           }
         });
-
-        if (studentPaths.length > 0) {
-          console.log("🗑️ Purging custom answer student-uploads:", studentPaths);
-          const { error: regStorageError } = await supabase.storage
-            .from('registration_files')
-            .remove(studentPaths);
-          if (regStorageError) {
-            console.warn("Error purging custom answer uploads:", regStorageError.message);
-          }
-        }
       }
 
-      // 2. Extract and purge the file path from the main event banner URL (if it exists)
-      if (event.banner_path) {
-        const bannerPath = event.banner_path.split('/registration_files/')[1];
-        if (bannerPath) {
-          console.log("🗑️ Purging banner from storage:", bannerPath);
-          const { error: bannerStorageError } = await supabase.storage
-            .from('registration_files')
-            .remove([bannerPath]);
-          if (bannerStorageError) {
-            console.warn("Error purging banner:", bannerStorageError.message);
+      // 4b. Also list and purge all files inside older event ID folder format in registration_files
+      const { data: folderFiles } = await supabase.storage
+        .from('registration_files')
+        .list(String(event.id));
+
+      if (folderFiles && folderFiles.length > 0) {
+        folderFiles.forEach(file => {
+          const filePath = `${event.id}/${file.name}`;
+          if (!purgeQueue['registration_files'].includes(filePath)) {
+            purgeQueue['registration_files'].push(filePath);
           }
-        }
+        });
       }
 
-      // 3. Extract and purge the event attachment/statement URL (if it exists)
-      if (event.attachment_url) {
-        let attachmentPath = null;
-        let bucketName = null;
-        
-        if (event.attachment_url.includes('/event-attachment/')) {
-          attachmentPath = event.attachment_url.split('/event-attachment/')[1];
-          bucketName = 'event-attachment';
-        } else if (event.attachment_url.includes('/event-materials/')) {
-          attachmentPath = event.attachment_url.split('/event-materials/')[1];
-          bucketName = 'event-materials';
-        }
-        
-        if (attachmentPath && bucketName) {
-          console.log(`🗑️ Purging event attachment from bucket '${bucketName}':`, attachmentPath);
-          const { error: attachmentStorageError } = await supabase.storage
+      // 5. Fire separate delete commands for each bucket container
+      for (const bucketName of Object.keys(purgeQueue)) {
+        const files = purgeQueue[bucketName];
+        if (files.length > 0) {
+          console.log(`🗑️ Removing files from bucket [${bucketName}]:`, files);
+          const { error: storageError } = await supabase.storage
             .from(bucketName)
-            .remove([attachmentPath]);
-          if (attachmentStorageError) {
-            console.warn("Error purging event attachment:", attachmentStorageError.message);
+            .remove(files);
+
+          if (storageError) {
+            console.warn(`Bucket [${bucketName}] cleanup warning:`, storageError.message);
           }
         }
       }
 
-      // 4. Delete the event row from the database table
+      // 6. Delete the primary event row from the database table
       const { error: dbDeleteError } = await supabase
         .from('events')
         .delete()
