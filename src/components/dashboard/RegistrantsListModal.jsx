@@ -44,6 +44,19 @@ export default function RegistrantsListModal({ event, onClose }) {
 
   const isTeamEvent = event.participation_type === 'Team';
 
+  // Compute sorted registrations dynamically based on type (Team Name vs. Student Name)
+  const organizedRegistrations = [...(registrations || [])].sort((a, b) => {
+    if (isTeamEvent) {
+      const teamA = (a.custom_answers?._team_name || '').toLowerCase();
+      const teamB = (b.custom_answers?._team_name || '').toLowerCase();
+      return teamA.localeCompare(teamB);
+    } else {
+      const nameA = (a.profiles?.full_name || '').toLowerCase();
+      const nameB = (b.profiles?.full_name || '').toLowerCase();
+      return nameA.localeCompare(nameB);
+    }
+  });
+
   // Get unique teams with their solution urls
   const uniqueTeams = [];
   const teamNamesSeen = new Set();
@@ -194,7 +207,7 @@ export default function RegistrantsListModal({ event, onClose }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-                  {registrations.map((reg) => {
+                  {organizedRegistrations.map((reg) => {
                     const student = reg.profiles || {};
                     const resolvedEmail = student.email || reg.student?.email || reg.profiles?.email_address || reg.student?.email_address || 'Pending sync';
                     return (
