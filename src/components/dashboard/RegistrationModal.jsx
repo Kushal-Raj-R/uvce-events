@@ -180,22 +180,6 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
     });
   };
 
-  const handleCustomFileChange = (e, questionConfig) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const fileSizeInMB = file.size / (1024 * 1024);
-    const allowedLimit = questionConfig.max_size || 2; // Fallback to 2MB if not specified
-
-    if (fileSizeInMB > allowedLimit) {
-      alert(`The file size for "${questionConfig.label}" must be under ${allowedLimit}MB. Your file is ${fileSizeInMB.toFixed(2)}MB.`);
-      e.target.value = ''; // Reset file input selection
-      return;
-    }
-    
-    // Proceed with processing or compression...
-    handleCustomFieldChange(questionConfig.id, file);
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -677,13 +661,35 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
                               />
                             ) : field.type === 'file' ? (
                               <div className="space-y-1.5">
-                                <input
-                                  type="file"
-                                  accept="application/pdf, image/*"
-                                  required={!answers[field.id]}
-                                  onChange={(e) => handleCustomFileChange(e, field)}
-                                  className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs bg-white"
-                                />
+                                 <input
+                                   type="file"
+                                   accept="application/pdf, image/*"
+                                   required={!answers[field.id]}
+                                   onChange={async (e) => {
+                                     e.preventDefault();
+                                     e.stopPropagation();
+                                     
+                                     const file = e.target.files?.[0];
+                                     if (!file) return;
+
+                                     // Get the custom limit set by the organizer (Default fallback to 2MB if not specified)
+                                     const maxAllowedMb = field.max_size || event?.max_file_size_limit || 2; 
+                                     const maxAllowedBytes = maxAllowedMb * 1024 * 1024;
+
+                                     // Validate the file size before doing anything else
+                                     if (file.size > maxAllowedBytes) {
+                                       alert(`❌ File too large! The organizer has limited uploads for this event to ${maxAllowedMb}MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB.`);
+                                       
+                                       // Clear the input element target reset
+                                       e.target.value = "";
+                                       return;
+                                     }
+
+                                     console.log("🚀 File size validated successfully. Starting upload sequence...");
+                                     handleCustomFieldChange(field.id, file);
+                                   }}
+                                   className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs bg-white"
+                                 />
                                 {answers[field.id] && (
                                   <div className="text-[11px] font-semibold flex items-center gap-1.5">
                                     {answers[field.id].fileAttachedPlaceholder ? (
