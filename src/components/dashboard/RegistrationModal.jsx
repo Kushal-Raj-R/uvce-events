@@ -331,14 +331,13 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
       });
     }
 
-    const { error } = await supabase
-      .from('registrations')
-      .insert(registrationsToInsert);
+    try {
+      const { error } = await supabase
+        .from('registrations')
+        .insert(registrationsToInsert);
 
-    if (error) {
-      setErrorMsg(error.message || 'One or more teammates (or you) are already registered for this event.');
-      setLoading(false);
-    } else {
+      if (error) throw error;
+
       setSuccess(true);
       setLoading(false);
       localStorage.removeItem('active_wizard_step');
@@ -352,6 +351,20 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
       setTimeout(() => {
         onSuccess();
       }, 2000);
+
+    } catch (err) {
+      console.error("Registration sub-error intercepted:", err);
+
+      // Catch the unique constraint violation thrown by the database
+      if (err.message?.includes('registrations_event_id_student_id_key') || err.code === '23505') {
+        const duplicateMemberName = selectedTeammates?.map(t => typeof t === 'object' ? t.full_name : t).join(', ') || "One of your selected friends";
+        setErrorMsg(`❌ Cannot register: ${duplicateMemberName} is already registered for this event in another team!`);
+        setLoading(false);
+        return;
+      }
+
+      setErrorMsg(err.message || "An unexpected error occurred during submission.");
+      setLoading(false);
     }
   };
 
