@@ -11,10 +11,26 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
   const [friendsList, setFriendsList] = useState([]);
   const [selectedTeammates, setSelectedTeammates] = useState([]);
   const [teamName, setTeamName] = useState('');
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(() => {
+    const savedStep = localStorage.getItem('active_wizard_step');
+    return savedStep ? parseInt(savedStep, 10) : 1;
+  });
+
+  const handleStepNavigation = (targetStep) => {
+    setCurrentStep(targetStep);
+    localStorage.setItem('active_wizard_step', targetStep.toString());
+  };
+
+  const handleClose = () => {
+    localStorage.removeItem('active_wizard_step');
+    onClose();
+  };
 
   useEffect(() => {
-    setCurrentStep(1);
+    const savedStep = localStorage.getItem('active_wizard_step');
+    if (!savedStep) {
+      setCurrentStep(1);
+    }
     setSuccess(false);
     setErrorMsg('');
   }, [event?.id]);
@@ -262,6 +278,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
     } else {
       setSuccess(true);
       setLoading(false);
+      localStorage.removeItem('active_wizard_step');
       if (typeof onRefresh === 'function') {
         onRefresh();
       }
@@ -305,7 +322,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
               <div className={`w-6 h-1.5 rounded-full transition-all ${currentStep === 2 ? 'bg-blue-600' : 'bg-slate-200'}`} />
             </div>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="text-gray-400 hover:text-gray-600 transition-colors ml-2"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -330,7 +347,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
               </p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 flex flex-col overflow-hidden">
               <div className="p-6 overflow-y-auto flex-1 flex flex-col gap-6">
                 {errorMsg && (
                   <div className="p-3 bg-rose-50 text-rose-700 border border-rose-100 rounded-xl text-xs font-semibold">
@@ -604,21 +621,21 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
               {/* 3. MODAL NAVIGATION ACTION FOOTER */}
               <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
                 {currentStep === 1 ? (
-                  <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700">
+                  <button type="button" onClick={handleClose} className="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700">
                     Cancel
                   </button>
                 ) : (
-                  <button type="button" onClick={() => setCurrentStep(1)} className="px-4 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
+                  <button type="button" onClick={() => handleStepNavigation(1)} className="px-4 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
                     ← Back
                   </button>
                 )}
 
                 {currentStep === 1 ? (
-                  <button type="button" onClick={() => setCurrentStep(2)} className="px-5 py-2.5 bg-blue-600 text-white font-semibold text-sm rounded-xl hover:bg-blue-700 shadow-sm transition-all">
+                  <button type="button" onClick={() => handleStepNavigation(2)} className="px-5 py-2.5 bg-blue-600 text-white font-semibold text-sm rounded-xl hover:bg-blue-700 shadow-sm transition-all">
                     Next Step →
                   </button>
                 ) : (
-                  <button type="submit" disabled={loading} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl shadow-sm transition-all flex items-center gap-2">
+                  <button type="button" onClick={handleSubmit} disabled={loading} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl shadow-sm transition-all flex items-center gap-2">
                     {loading ? (
                       <>
                         <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
@@ -633,7 +650,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
                   </button>
                 )}
               </div>
-            </form>
+            </div>
           )}
         </div>
 

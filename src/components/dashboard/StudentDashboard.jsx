@@ -21,7 +21,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
     return (savedTab && validTabs.includes(savedTab)) ? savedTab : 'dashboard';
   });
 
-  const handleTabChange = (newTabName) => {
+  const handleTabSwitch = (newTabName) => {
     setActiveTab(newTabName);
     localStorage.setItem('portal_active_tab', newTabName);
   };
@@ -523,7 +523,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
           {/* Navigation Links */}
           <nav className="space-y-1">
             <button
-              onClick={() => handleTabChange('dashboard')}
+              onClick={() => handleTabSwitch('dashboard')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
                 activeTab === 'dashboard'
                   ? 'bg-primary-50 text-primary-500'
@@ -534,7 +534,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
               <span>Dashboard</span>
             </button>
             <button
-              onClick={() => handleTabChange('upcoming')}
+              onClick={() => handleTabSwitch('upcoming')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
                 activeTab === 'upcoming'
                   ? 'bg-primary-50 text-primary-500'
@@ -545,7 +545,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
               <span>Upcoming Events</span>
             </button>
             <button
-              onClick={() => handleTabChange('registrations')}
+              onClick={() => handleTabSwitch('registrations')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all relative whitespace-nowrap ${
                 activeTab === 'registrations'
                   ? 'bg-primary-50 text-primary-500'
@@ -561,7 +561,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
               )}
             </button>
             <button
-              onClick={() => handleTabChange('friends')}
+              onClick={() => handleTabSwitch('friends')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all relative whitespace-nowrap ${
                 activeTab === 'friends'
                   ? 'bg-primary-50 text-primary-500'
@@ -577,7 +577,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
               )}
             </button>
             <button
-              onClick={() => handleTabChange('profile')}
+              onClick={() => handleTabSwitch('profile')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
                 activeTab === 'profile'
                   ? 'bg-primary-50 text-primary-500'
@@ -617,7 +617,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-2 py-2 shadow-lg flex justify-around items-center z-50 md:hidden pb-safe">
         {/* Option 1: Dashboard */}
         <button 
-          onClick={() => handleTabChange('dashboard')}
+          onClick={() => handleTabSwitch('dashboard')}
           className={`flex flex-col items-center gap-1 p-2 transition-all ${
             activeTab === 'dashboard' ? 'text-primary-500 font-semibold' : 'text-slate-500'
           }`}
@@ -628,7 +628,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
 
         {/* Option 2: Upcoming Events */}
         <button 
-          onClick={() => handleTabChange('upcoming')}
+          onClick={() => handleTabSwitch('upcoming')}
           className={`flex flex-col items-center gap-1 p-2 transition-all ${
             activeTab === 'upcoming' ? 'text-primary-500 font-semibold' : 'text-slate-500'
           }`}
@@ -639,7 +639,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
 
         {/* Option 3: My Registrations */}
         <button 
-          onClick={() => handleTabChange('registrations')}
+          onClick={() => handleTabSwitch('registrations')}
           className={`flex flex-col items-center gap-1 p-2 transition-all relative ${
             activeTab === 'registrations' ? 'text-primary-500 font-semibold' : 'text-slate-500'
           }`}
@@ -655,7 +655,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
 
         {/* Option 4: Friends */}
         <button 
-          onClick={() => handleTabChange('friends')}
+          onClick={() => handleTabSwitch('friends')}
           className={`flex flex-col items-center gap-1 p-2 transition-all relative ${
             activeTab === 'friends' ? 'text-primary-500 font-semibold' : 'text-slate-500'
           }`}
@@ -671,7 +671,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
 
         {/* Option 5: Profile Settings */}
         <button 
-          onClick={() => handleTabChange('profile')}
+          onClick={() => handleTabSwitch('profile')}
           className={`flex flex-col items-center gap-1 p-2 transition-all ${
             activeTab === 'profile' ? 'text-primary-500 font-semibold' : 'text-slate-500'
           }`}
@@ -806,7 +806,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                   {/* Profile Action Menu Content */}
                   <div className="absolute right-0 top-full mt-2 z-50 w-48 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 transform origin-top-right animate-fadeIn">
                     <button 
-                      onClick={() => { handleTabChange('profile'); setShowProfileMenu(false); }}
+                      onClick={() => { handleTabSwitch('profile'); setShowProfileMenu(false); }}
                       className="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition-colors flex items-center gap-2"
                     >
                       ⚙️ Profile Settings
@@ -850,7 +850,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                         Discover, register, and track academic seminars, hands-on workshops, and student networking opportunities.
                       </p>
                       <button
-                        onClick={() => handleTabChange('upcoming')}
+                        onClick={() => handleTabSwitch('upcoming')}
                         className="bg-white text-primary-600 text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
                       >
                         Explore Upcoming Events
@@ -898,7 +898,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                     <div className="flex justify-between items-center mb-4">
                       <h3 className="text-xl font-bold text-slate-800">Featured Events</h3>
                       <button 
-                        onClick={() => handleTabChange('upcoming')} 
+                        onClick={() => handleTabSwitch('upcoming')} 
                         className="text-sm font-semibold text-blue-600 hover:underline"
                       >
                         View All
@@ -1191,7 +1191,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                         </div>
 
                         {/* Add Friend Code */}
-                        <form onSubmit={handleSendInvite} className="bg-slate-50 border border-slate-100 rounded-2xl p-5 space-y-3">
+                        <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 space-y-3">
                           <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Connect with a Student</span>
                           
                           {inviteSuccess && (
@@ -1215,13 +1215,14 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                               className="flex-grow px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-mono tracking-wider"
                             />
                             <button
-                              type="submit"
+                              type="button"
+                              onClick={handleSendInvite}
                               className="bg-primary-500 hover:bg-primary-600 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-all shadow-md active:scale-95 shrink-0"
                             >
                               Send Invite
                             </button>
                           </div>
-                        </form>
+                        </div>
                       </div>
 
                       {/* Right panel: My Squad */}
@@ -1285,7 +1286,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                     </div>
                   )}
 
-                  <form onSubmit={handleProfileSave} className="space-y-6">
+                  <div className="space-y-6">
                     {/* Full Name */}
                     <div>
                       <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Full Name</label>
@@ -1359,14 +1360,15 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                     {/* Submit */}
                     <div className="pt-4 border-t border-slate-100 flex justify-end">
                       <button
-                        type="submit"
+                        type="button"
+                        onClick={handleProfileSave}
                         disabled={profileLoading}
                         className="bg-primary-500 hover:bg-primary-600 disabled:bg-primary-400 text-white font-semibold py-3 px-6 rounded-xl shadow-md transition-all text-xs"
                       >
                         {profileLoading ? 'Saving Changes...' : 'Save Profile Changes'}
                       </button>
                     </div>
-                  </form>
+                  </div>
                 </div>
               )}
             </>

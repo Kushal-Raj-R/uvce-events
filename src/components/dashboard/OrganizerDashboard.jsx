@@ -39,9 +39,43 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
     return (savedTab && validTabs.includes(savedTab)) ? savedTab : 'dashboard';
   });
 
-  const handleTabChange = (newTabName) => {
+  const handleTabSwitch = (newTabName) => {
     setActiveTab(newTabName);
     localStorage.setItem('portal_active_tab', newTabName);
+  };
+
+  const handleProfileSave = async () => {
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({
+        full_name: profile.full_name,
+        branch: profile.branch,
+        phone: profile.phone,
+        club_name: profile.club_name
+      })
+      .eq('id', user.id);
+
+    if (profileError) {
+      console.error('Failed to update organizer profile:', profileError);
+      alert('Failed to update database record: ' + profileError.message);
+      return;
+    }
+
+    if (profile.club_name) {
+      setClubCategory(profile.club_name);
+    }
+
+    const { error: authError } = await supabase.auth.updateUser({
+      data: { full_name: profile.full_name }
+    });
+
+    if (authError) {
+      console.error('Failed to sync auth details:', authError);
+      alert('Failed to sync authentication profile details: ' + authError.message);
+      return;
+    }
+
+    alert('Profile updated successfully!');
   };
 
   const [events, setEvents] = useState([]);
@@ -497,7 +531,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
 
           <nav className="space-y-1">
             <button
-              onClick={() => handleTabChange('dashboard')}
+              onClick={() => handleTabSwitch('dashboard')}
               className={`flex items-center gap-4 px-4 py-3 rounded-xl font-medium text-sm transition-all w-full text-left ${
                 activeTab === 'dashboard'
                   ? 'bg-primary-50 text-primary-500 font-semibold'
@@ -508,7 +542,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
               <span>Event Management</span>
             </button>
             <button
-              onClick={() => handleTabChange('materials')}
+              onClick={() => handleTabSwitch('materials')}
               className={`flex items-center gap-4 px-4 py-3 rounded-xl font-medium text-sm transition-all w-full text-left ${
                 activeTab === 'materials'
                   ? 'bg-blue-50 text-blue-600 font-semibold'
@@ -528,7 +562,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
               <span>Event Materials</span>
             </button>
             <button
-              onClick={() => handleTabChange('profile')}
+              onClick={() => handleTabSwitch('profile')}
               className={`flex items-center gap-4 px-4 py-3 rounded-xl font-medium text-sm transition-all w-full text-left ${
                 activeTab === 'profile'
                   ? 'bg-primary-50 text-primary-500 font-semibold'
@@ -565,7 +599,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-2 py-2 shadow-lg flex justify-around items-center z-50 md:hidden pb-safe">
         {/* Option 1: Event Management / Dashboard */}
         <button 
-          onClick={() => handleTabChange('dashboard')}
+          onClick={() => handleTabSwitch('dashboard')}
           className={`flex flex-col items-center gap-1 p-2 transition-all ${
             activeTab === 'dashboard' ? 'text-blue-600 font-semibold' : 'text-slate-500'
           }`}
@@ -578,7 +612,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
 
         {/* Option 2: Event Materials */}
         <button 
-          onClick={() => handleTabChange('materials')}
+          onClick={() => handleTabSwitch('materials')}
           className={`flex flex-col items-center gap-1 p-2 transition-all ${
             activeTab === 'materials' ? 'text-blue-600 font-semibold' : 'text-slate-500'
           }`}
@@ -591,7 +625,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
 
         {/* Option 3: Profile Settings */}
         <button 
-          onClick={() => handleTabChange('profile')}
+          onClick={() => handleTabSwitch('profile')}
           className={`flex flex-col items-center gap-1 p-2 transition-all ${
             activeTab === 'profile' ? 'text-blue-600 font-semibold' : 'text-slate-500'
           }`}
@@ -677,7 +711,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                   {/* Profile Action Menu Content */}
                   <div className="absolute right-0 top-full mt-2 z-50 w-48 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 transform origin-top-right animate-fadeIn">
                     <button 
-                      onClick={() => { handleTabChange('profile'); setShowProfileMenu(false); }}
+                      onClick={() => { handleTabSwitch('profile'); setShowProfileMenu(false); }}
                       className="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition-colors flex items-center gap-2"
                     >
                       ⚙️ Profile Settings
@@ -755,7 +789,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                         </div>
                       )}
 
-                      <form className="space-y-5" onSubmit={(e) => handleCreateEvent(e, false)}>
+                      <div className="space-y-5">
                         {/* Event Title */}
                         <div className="space-y-1.5">
                           <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">Event Title</label>
@@ -1171,13 +1205,14 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                             {editingDraftId ? 'Update Draft' : 'Save as Draft'}
                           </button>
                           <button
-                            type="submit"
+                            type="button"
+                            onClick={(e) => handleCreateEvent(e, false)}
                             className="flex-[2] bg-primary-500 hover:bg-primary-600 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition-all text-xs"
                           >
                             {editingDraftId ? 'Publish Event' : 'Launch Event Registration'}
                           </button>
                         </div>
-                      </form>
+                      </div>
                     </div>
 
                     {/* RIGHT COLUMN: Statistics and Managed Table (5 cols) */}
@@ -1322,43 +1357,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                 <div className="max-w-2xl bg-white border border-slate-200/60 rounded-3xl p-8 shadow-sm animate-fade-in mx-auto">
                   <h3 className="text-lg font-bold text-slate-800 mb-6">Modify Organizer Details</h3>
                   
-                  <form onSubmit={async (e) => {
-                    e.preventDefault();
-                    
-                    // 1. Update public.profiles table
-                    const { error: profileError } = await supabase
-                      .from('profiles')
-                      .update({
-                        full_name: profile.full_name,
-                        branch: profile.branch,
-                        phone: profile.phone,
-                        club_name: profile.club_name
-                      })
-                      .eq('id', user.id);
-
-                    if (profileError) {
-                      console.error('Failed to update organizer profile:', profileError);
-                      alert('Failed to update database record: ' + profileError.message);
-                      return;
-                    }
-
-                    if (profile.club_name) {
-                      setClubCategory(profile.club_name);
-                    }
-
-                    // 2. Sync full name to Supabase Auth metadata
-                    const { error: authError } = await supabase.auth.updateUser({
-                      data: { full_name: profile.full_name }
-                    });
-
-                    if (authError) {
-                      console.error('Failed to sync auth details:', authError);
-                      alert('Failed to sync authentication profile details: ' + authError.message);
-                      return;
-                    }
-
-                    alert('Profile updated successfully!');
-                  }} className="space-y-6">
+                  <div className="space-y-6">
                     <div>
                       <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Organizer Full Name</label>
                       <input
@@ -1406,13 +1405,14 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
 
                     <div className="pt-4 border-t border-slate-100 flex justify-end">
                       <button
-                        type="submit"
+                        type="button"
+                        onClick={handleProfileSave}
                         className="bg-primary-500 hover:bg-primary-600 text-white font-semibold py-3 px-6 rounded-xl shadow-md transition-all text-xs"
                       >
                         Save Profile Changes
                       </button>
                     </div>
-                  </form>
+                  </div>
                 </div>
               )}
 
