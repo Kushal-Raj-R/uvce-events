@@ -1422,7 +1422,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                       </p>
                     </div>
 
-                    {/* IMMUTABLE COLLEGE / INSTITUTION DISPLAY BOX */}
+                    {/* IMMUTABLE REAL COLLEGE NAME DISPLAY BOX */}
                     <div className="flex flex-col gap-1.5 w-full">
                       <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                         College / Institution
@@ -1433,9 +1433,9 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                         value={
                           profile?.college_name === 'UVCE' 
                             ? 'University Visvesvaraya College of Engineering (UVCE)' 
-                            : profile?.college_name || 'Other Institution'
+                            : profile?.college_name || 'Not Specified'
                         }
-                        className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-400 font-medium cursor-not-allowed select-none shadow-sm"
+                        className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-500 font-medium cursor-not-allowed select-none shadow-sm uppercase"
                       />
                       <p className="text-[10px] text-slate-400 italic">
                         🔒 College affiliation is verified during registration and cannot be modified from settings.
