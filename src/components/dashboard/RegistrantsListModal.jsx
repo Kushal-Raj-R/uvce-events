@@ -1,7 +1,6 @@
 // src/components/dashboard/RegistrantsListModal.jsx
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
-import { DownloadIcon } from '../ui/Icons';
 
 export default function RegistrantsListModal({ event, onClose }) {
   const [registrations, setRegistrations] = useState([]);
@@ -71,64 +70,7 @@ export default function RegistrantsListModal({ event, onClose }) {
     }
   });
 
-  // CSV Export handler
-  const exportToCSV = () => {
-    if (registrations.length === 0) return;
 
-    // Define standard headers
-    let csvHeaders = ['Full Name', 'Roll Number', 'Branch', 'Semester', 'Email', 'Phone Number', 'Team Name', 'Solution URL', 'Registration Date'];
-    
-    // Add custom fields as headers
-    const customFields = event.custom_fields || [];
-    customFields.forEach(field => {
-      csvHeaders.push(field.label);
-    });
-
-    const csvRows = [csvHeaders.join(',')];
-
-    registrations.forEach(reg => {
-      const student = reg.profiles || {};
-      const regDate = reg.created_at ? new Date(reg.created_at).toLocaleDateString() : 'N/A';
-      const resolvedEmail = student.email || reg.student?.email || reg.profiles?.email_address || reg.student?.email_address || 'Pending sync';
-      
-      const phone = student.phone || '';
-      const escapedPhone = `="${phone}"`;
-      
-      // Standard values (escaped for safety)
-      const values = [
-        `"${student.full_name || ''}"`,
-        `"${student.roll_number || ''}"`,
-        `"${student.branch || ''}"`,
-        `"${student.semester || ''}"`,
-        `"${resolvedEmail}"`,
-        escapedPhone,
-        `"${reg.custom_answers?._team_name || 'N/A'}"`,
-        `"${reg.solution_url || 'N/A'}"`,
-        `"${regDate}"`
-      ];
-
-      // Custom answers values
-      customFields.forEach(field => {
-        let answer = reg.custom_answers?.[field.id] || '';
-        if (Array.isArray(answer)) {
-          answer = answer.join(', ');
-        }
-        values.push(`"${answer.replace(/"/g, '""')}"`);
-      });
-
-      csvRows.push(values.join(','));
-    });
-
-    // Create file blob and trigger download
-    const csvContent = 'data:text/csv;charset=utf-8,' + csvRows.join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `${event.title.replace(/\s+/g, '_')}_registrations.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   const handleExportPDF = () => {
     // 1. Establish a new detached print viewport canvas context window
@@ -218,24 +160,12 @@ export default function RegistrantsListModal({ event, onClose }) {
           </div>
           <div className="flex items-center gap-3">
             {registrations.length > 0 && (
-              <>
-                <button
-                  onClick={exportToCSV}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-gray-600 transition-colors"
-                >
-                  <DownloadIcon className="w-4 h-4" />
-                  Export CSV
-                </button>
-                <button
-                  onClick={handleExportPDF}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-xs font-semibold text-white transition-colors shadow-sm active:scale-95 transition-all"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                  </svg>
-                  Export PDF
-                </button>
-              </>
+              <button
+                onClick={handleExportPDF}
+                className="h-9 px-4 bg-blue-600 text-white font-bold text-xs rounded-xl hover:bg-blue-700 active:scale-95 transition-all shadow-sm flex items-center gap-2"
+              >
+                <span>📊</span> Export Registration PDF
+              </button>
             )}
             <button
               onClick={onClose}
