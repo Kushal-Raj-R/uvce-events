@@ -91,6 +91,9 @@ export default function RegistrantsListModal({ event, onClose }) {
       const regDate = reg.created_at ? new Date(reg.created_at).toLocaleDateString() : 'N/A';
       const resolvedEmail = student.email || reg.student?.email || reg.profiles?.email_address || reg.student?.email_address || 'Pending sync';
       
+      const phone = student.phone || '';
+      const escapedPhone = `="${phone}"`;
+      
       // Standard values (escaped for safety)
       const values = [
         `"${student.full_name || ''}"`,
@@ -98,7 +101,7 @@ export default function RegistrantsListModal({ event, onClose }) {
         `"${student.branch || ''}"`,
         `"${student.semester || ''}"`,
         `"${resolvedEmail}"`,
-        `"${student.phone || ''}"`,
+        escapedPhone,
         `"${reg.custom_answers?._team_name || 'N/A'}"`,
         `"${reg.solution_url || 'N/A'}"`,
         `"${regDate}"`
