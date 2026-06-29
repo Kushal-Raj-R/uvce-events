@@ -77,40 +77,26 @@ export default function RegistrantsListModal({ event, onClose }) {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    // 2. Build a lookup dictionary mapping custom field IDs to real human-readable questions
-    const questionLookup = {};
-    if (event?.custom_fields && Array.isArray(event.custom_fields)) {
-      event.custom_fields.forEach(q => {
-        questionLookup[q.id] = q.label;
-      });
-    }
-
-    // 3. Dynamic Column Width Weights Calculation
+    // 2. Fetch our active questions array safely
+    const activeQuestions = event?.custom_fields || [];
     const isAllColleges = event?.event_scope === 'ALL';
-    const baseColWidth = isAllColleges ? "11%" : "13%";
-    const emailColWidth = isAllColleges ? "16%" : "18%";
-    
-    // 4. Map structural registration items to safe table rows
+
+    // 3. Map registration rows, dynamically matching answers column-by-column
     const tableRows = registrations.map(reg => {
       const student = reg.profiles || {};
       const resolvedEmail = student.email || reg.student?.email || reg.profiles?.email_address || reg.student?.email_address || 'Pending sync';
       
-      // Convert JSON database answers into readable "Question: Answer" layout blocks
-      const formattedAnswers = Object.entries(reg.custom_answers || {})
-        .map(([fieldId, answer]) => {
-          if (fieldId === '_team_name') {
-            return `<div style="margin-bottom: 4px; background: #f1f5f9; padding: 4px 6px; border-radius: 4px;">
-                      <strong style="color: #475569;">Team Name:</strong> ${answer}
-                    </div>`;
-          }
-          const realQuestion = questionLookup[fieldId] || fieldId; // Fallback to raw ID if not found
-          return `<div style="margin-bottom: 4px; background: #f1f5f9; padding: 4px 6px; border-radius: 4px;">
-                    <strong style="color: #475569;">${realQuestion}:</strong> ${answer}
-                  </div>`;
-        }).join('');
+      // Generate individual <td> cells for each question in the exact same sequence
+      const customQuestionCells = activeQuestions.map(q => {
+        let studentAnswer = reg.custom_answers?.[q.id] || 'N/A';
+        if (Array.isArray(studentAnswer)) {
+          studentAnswer = studentAnswer.join(', ');
+        }
+        return `<td style="padding: 10px; vertical-align: top; word-break: break-word;">${studentAnswer}</td>`;
+      }).join('');
 
       return `
-        <tr style="border-bottom: 1px solid #e2e8f0; font-size: 10px; page-break-inside: avoid;">
+        <tr style="border-bottom: 1px solid #e2e8f0; font-size: 10px;">
           <td style="padding: 10px; font-weight: 600; color: #0f172a;">${student.full_name || 'Anonymous User'}</td>
           <td style="padding: 10px; font-family: monospace; color: #334155;">${student.roll_number || 'N/A'}</td>
           ${isAllColleges ? `<td style="padding: 10px; color: #2563eb; font-weight: bold;">${student.college_name || 'UVCE'}</td>` : ''}
@@ -118,32 +104,29 @@ export default function RegistrantsListModal({ event, onClose }) {
           <td style="padding: 10px; color: #475569;">${student.semester || 'N/A'}</td>
           <td style="padding: 10px; color: #475569; word-break: break-all;">${resolvedEmail}</td>
           <td style="padding: 10px; font-family: monospace; color: #334155;">${student.phone || 'N/A'}</td>
-          <td style="padding: 10px; vertical-align: top;">${formattedAnswers || '<span style="color:#94a3b8;">N/A</span>'}</td>
+          
+          ${customQuestionCells}
         </tr>
       `;
     }).join('');
 
-    // 5. Compile document with fluid table properties
+    // 4. Map dynamic <th> headers for each explicit question label
+    const customQuestionHeaders = activeQuestions.map(q => {
+      return `<th style="padding: 10px; min-width: 100px;">${q.label || q.question || 'Question'}</th>`;
+    }).join('');
+
+    // 5. Build output window stream frame with fluid parameters
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
       <head>
         <title>${event?.title || 'Registrations'}_Report</title>
         <style>
-          @page { size: A4 landscape; margin: 12mm 10mm; }
-          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1e293b; margin: 0; }
+          @page { size: A4 landscape; margin: 10mm; }
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #1e293b; margin: 0; }
           .header { border-bottom: 2px solid #2563eb; padding-bottom: 10px; margin-bottom: 15px; }
-          
-          /* 🚀 DYNAMIC AUTO-SIZING TABLE SETUP */
-          table { 
-            width: 100%; 
-            table-layout: auto; 
-            border-collapse: collapse; 
-            text-align: left;
-            page-break-inside: auto;
-          }
+          table { width: 100%; table-layout: auto; border-collapse: collapse; text-align: left; }
           th { background-color: #1e3a8a; color: white; padding: 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
-          tr { page-break-inside: avoid; page-break-after: auto; }
           tr:nth-child(even) { background-color: #f8fafc; }
         </style>
       </head>
@@ -155,14 +138,15 @@ export default function RegistrantsListModal({ event, onClose }) {
         <table>
           <thead>
             <tr>
-              <th style="width: ${baseColWidth};">Student Name</th>
-              <th style="width: ${baseColWidth};">Roll Number</th>
-              ${isAllColleges ? `<th style="width: 10%;">College</th>` : ''}
-              <th style="width: 8%;">Branch</th>
-              <th style="width: 9%;">Semester</th>
-              <th style="width: ${emailColWidth};">Email</th>
-              <th style="width: ${baseColWidth};">Phone Number</th>
-              <th style="width: auto;">Custom Form Answers</th>
+              <th>Student Name</th>
+              <th>Roll Number</th>
+              ${isAllColleges ? '<th>College</th>' : ''}
+              <th>Branch</th>
+              <th>Semester</th>
+              <th>Email</th>
+              <th>Phone Number</th>
+              
+              ${customQuestionHeaders}
             </tr>
           </thead>
           <tbody>
