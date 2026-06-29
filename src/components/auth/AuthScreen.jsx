@@ -16,6 +16,8 @@ export default function AuthScreen({ onAuthSuccess }) {
   const [rollNumber, setRollNumber] = useState('');
   const [branch, setBranch] = useState('');
   const [semester, setSemester] = useState('');
+  const [institutionType, setInstitutionType] = useState('UVCE');
+  const [customCollege, setCustomCollege] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -72,12 +74,19 @@ export default function AuthScreen({ onAuthSuccess }) {
           setLoading(false);
           return;
         }
+        if (institutionType === 'OTHER' && !customCollege.trim()) {
+          setErrorMsg('Please specify your college name.');
+          setLoading(false);
+          return;
+        }
         if (!rollNumber || !branch || !semester) {
           setErrorMsg('Please fill in Roll Number, Branch, and Semester.');
           setLoading(false);
           return;
         }
       }
+
+      const finalCollegeName = institutionType === 'UVCE' ? 'UVCE' : customCollege.trim();
 
       const signUpData = {
         email,
@@ -88,7 +97,7 @@ export default function AuthScreen({ onAuthSuccess }) {
             phone,
             role,
             ...(role === 'student'
-              ? { roll_number: rollNumber, branch, semester, username: username.toLowerCase().trim() }
+              ? { roll_number: rollNumber, branch, semester, username: username.toLowerCase().trim(), college_name: finalCollegeName }
               : { branch }), // For organizers, branch represents their department
           },
         },
@@ -332,6 +341,46 @@ export default function AuthScreen({ onAuthSuccess }) {
                       value={branch}
                       onChange={(e) => setBranch(e.target.value)}
                       className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-sm"
+                    />
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Institution / College selector */}
+            {activeTab === 'signup' && role === 'student' && (
+              <>
+                {/* INSTITUTION TYPE DROP-DOWN SELECTOR */}
+                <div className="flex flex-col gap-1.5 w-full mt-4">
+                  <label className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+                    Institution / College
+                  </label>
+                  <select 
+                    value={institutionType}
+                    onChange={(e) => {
+                      setInstitutionType(e.target.value);
+                      if (e.target.value === 'UVCE') setCustomCollege(''); // Clear text if switching back
+                    }}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-sm bg-white cursor-pointer"
+                  >
+                    <option value="UVCE">University Visvesvaraya College of Engineering (UVCE)</option>
+                    <option value="OTHER">Other Institute...</option>
+                  </select>
+                </div>
+
+                {/* DYNAMIC TEXT FIELD INPUT FOR EXTERNAL COLLEGES */}
+                {institutionType === 'OTHER' && (
+                  <div className="flex flex-col gap-1.5 w-full mt-3 animate-fade-in">
+                    <label className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+                      Specify College Name
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={customCollege}
+                      onChange={(e) => setCustomCollege(e.target.value)}
+                      placeholder="e.g., MSRIT, BMSCE, RVCE..."
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-sm bg-white"
                     />
                   </div>
                 )}
