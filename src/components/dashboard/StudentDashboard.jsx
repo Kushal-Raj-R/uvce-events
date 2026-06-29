@@ -83,6 +83,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
   const [profile, setProfile] = useState({
     full_name: '',
     username: '',
+    college_name: 'UVCE',
     roll_number: '',
     branch: '',
     semester: '',
@@ -207,12 +208,34 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
 
   async function fetchDashboardData() {
     setLoading(true);
-    // Fetch all active/open events
-    const { data: eventsData, error: eventsError } = await supabase
+
+    // Fetch the current student's profile to check their college
+    let studentCollege = 'UVCE';
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('college_name')
+      .eq('id', user.id)
+      .single();
+
+    if (profileData && profileData.college_name) {
+      studentCollege = profileData.college_name;
+    }
+
+    // Fetch all active/open events respecting visibility scope
+    let eventsQuery = supabase
       .from('events')
       .select('*')
-      .eq('status', 'OPEN')
-      .order('event_start_date', { ascending: true });
+      .eq('status', 'OPEN');
+
+    if (studentCollege !== 'UVCE') {
+      // If a student is NOT from UVCE, they can ONLY see events scoped for 'ALL'
+      eventsQuery = eventsQuery.eq('event_scope', 'ALL');
+    } else {
+      // If a student IS from UVCE, they can see both 'ALL' and 'UVCE' scoped events
+      eventsQuery = eventsQuery.in('event_scope', ['ALL', 'UVCE']);
+    }
+
+    const { data: eventsData, error: eventsError } = await eventsQuery.order('event_start_date', { ascending: true });
 
     let loadedEvents = [];
     if (!eventsError && eventsData) {
@@ -255,6 +278,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
       setProfile({
         full_name: data.full_name || '',
         username: data.username || '',
+        college_name: data.college_name || 'UVCE',
         roll_number: data.roll_number || '',
         branch: data.branch || '',
         semester: data.semester || '',
@@ -338,6 +362,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
         .update({
           full_name: profile.full_name,
           username: (profile.username || '').toLowerCase().trim(),
+          college_name: profile.college_name,
           roll_number: profile.roll_number,
           branch: profile.branch,
           semester: profile.semester,
@@ -1396,6 +1421,19 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                       <p className="text-[10px] text-slate-400 italic">
                         You can change your username at any time. Only lowercase letters, numbers, and underscores are valid.
                       </p>
+                    </div>
+
+                    {/* COLLEGE SELECTION FIELD */}
+                    <div className="flex flex-col gap-1.5 w-full">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">College / Institution</label>
+                      <select 
+                        value={profile.college_name || 'UVCE'}
+                        onChange={(e) => setProfile({ ...profile, college_name: e.target.value })}
+                        className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 font-medium focus:outline-none focus:border-blue-500 transition-all shadow-sm cursor-pointer"
+                      >
+                        <option value="UVCE">University Visvesvaraya College of Engineering (UVCE)</option>
+                        <option value="Other">Other Institution</option>
+                      </select>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">

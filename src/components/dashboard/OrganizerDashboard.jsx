@@ -116,6 +116,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
   const [customFields, setCustomFields] = useState([]);
   const [editingDraftId, setEditingDraftId] = useState(null);
   const [documents, setDocuments] = useState([]);
+  const [eventScope, setEventScope] = useState('ALL');
 
   // Form State for Adding a Custom Field
   const [showFieldBuilder, setShowFieldBuilder] = useState(false);
@@ -438,7 +439,8 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
       custom_fields: customFields || [],
       documents: documents || [],
       organizer_id: user.id,
-      status: forceDraft ? 'DRAFT' : 'OPEN'
+      status: forceDraft ? 'DRAFT' : 'OPEN',
+      event_scope: eventScope
     };
 
     let result;
@@ -478,6 +480,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
       setRegistrationDeadline('');
       setEventStartDate('');
       setDurationDays(1);
+      setEventScope('ALL');
       // Refresh list
       fetchOrganizerData();
     }
@@ -911,6 +914,19 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                             </select>
                           </div>
 
+                        </div>
+
+                        {/* EVENT VISIBILITY SCOPE INPUT */}
+                        <div className="flex flex-col gap-1.5 w-full mt-4">
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Event Visibility Scope</label>
+                          <select 
+                            value={eventScope}
+                            onChange={(e) => setEventScope(e.target.value)}
+                            className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 font-medium focus:outline-none focus:border-blue-500 transition-all shadow-sm cursor-pointer"
+                          >
+                            <option value="ALL">🌍 Open to All Colleges</option>
+                            <option value="UVCE">🏛️ UVCE Campus Internal Only</option>
+                          </select>
                         </div>
 
                         {participationType === 'Team' && (

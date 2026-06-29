@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
     full_name TEXT NOT NULL,
     username TEXT UNIQUE,
+    college_name TEXT DEFAULT 'UVCE',
     roll_number TEXT,
     branch TEXT,
     semester TEXT,
@@ -84,6 +85,7 @@ CREATE TABLE IF NOT EXISTS public.events (
     custom_notice_text TEXT,
     event_time TEXT,
     allow_submissions BOOLEAN DEFAULT TRUE NOT NULL,
+    event_scope TEXT DEFAULT 'ALL' CHECK (event_scope IN ('ALL', 'UVCE')) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
@@ -191,11 +193,12 @@ WITH CHECK (
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, full_name, username, roll_number, branch, semester, phone, role, friend_code)
+  INSERT INTO public.profiles (id, full_name, username, college_name, roll_number, branch, semester, phone, role, friend_code)
   VALUES (
     new.id,
     COALESCE(new.raw_user_meta_data->>'full_name', ''),
     COALESCE(new.raw_user_meta_data->>'username', ''),
+    COALESCE(new.raw_user_meta_data->>'college_name', 'UVCE'),
     COALESCE(new.raw_user_meta_data->>'roll_number', ''),
     COALESCE(new.raw_user_meta_data->>'branch', ''),
     COALESCE(new.raw_user_meta_data->>'semester', ''),
