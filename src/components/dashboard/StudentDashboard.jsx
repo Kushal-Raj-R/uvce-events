@@ -1167,7 +1167,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                                 )}
 
                                 {/* File Submission Section */}
-                                {eventDetails?.allow_submissions && (eventDetails?.custom_notice_text || eventDetails?.attachment_url) ? (
+                                {eventDetails?.allow_submissions && (eventDetails?.custom_notice_text || eventDetails?.attachment_url) && (
                                    <div className="border border-dashed border-slate-200 bg-white rounded-2xl p-5 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                                      <div className="flex items-center gap-3">
                                        <div className="w-10 h-10 bg-slate-50 text-slate-500 rounded-full flex items-center justify-center font-bold text-lg shadow-sm">
@@ -1214,11 +1214,6 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                                         {uploadingRegId === reg.id ? 'Uploading...' : reg.solution_url ? 'Change File' : 'Choose File'}
                                       </label>
                                     </div>
-                                  </div>
-                                ) : (
-                                  <div className="border border-dashed border-slate-200 bg-amber-50/20 rounded-2xl p-5 flex items-center gap-3 text-amber-700 text-xs">
-                                    <span className="text-lg">🔒</span>
-                                    <p className="font-medium">Submissions are currently closed. They will open once the organizer uploads the problem guidelines and activates the submission link.</p>
                                   </div>
                                 )}
                               </div>
