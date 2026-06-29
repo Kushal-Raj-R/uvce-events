@@ -49,7 +49,59 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
   };
   
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [expandedRegId, setExpandedRegId] = useState(null);
+  const [expandedRegId, setExpandedRegId] = useState(() => {
+    return sessionStorage.getItem('student_dashboard_expanded_reg_id') || null;
+  });
+  const [interruptedUploadRegId, setInterruptedUploadRegId] = useState(null);
+
+  useEffect(() => {
+    if (expandedRegId) {
+      sessionStorage.setItem('student_dashboard_expanded_reg_id', expandedRegId);
+    } else {
+      sessionStorage.removeItem('student_dashboard_expanded_reg_id');
+    }
+  }, [expandedRegId]);
+
+  // Rehydrate/Persist Scroll and Pending Upload state
+  useEffect(() => {
+    // 1. Check for interrupted upload
+    const pendingStr = sessionStorage.getItem('pendingUpload');
+    if (pendingStr) {
+      try {
+        const pending = JSON.parse(pendingStr);
+        const timeDiff = Date.now() - pending.timestamp;
+        if (pending.registrationId && timeDiff < 120000) { // within 2 minutes
+          setInterruptedUploadRegId(pending.registrationId);
+          setExpandedRegId(pending.registrationId);
+        }
+      } catch (e) {
+        console.error("Error parsing pending upload:", e);
+      }
+      sessionStorage.removeItem('pendingUpload');
+    }
+
+    // 2. Add scroll listener
+    const handleScroll = () => {
+      sessionStorage.setItem('student_dashboard_scroll_y', window.scrollY);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Scroll position rehydration hook
+  useEffect(() => {
+    if (!loading) {
+      const savedScrollY = sessionStorage.getItem('student_dashboard_scroll_y');
+      if (savedScrollY) {
+        // Wait slightly for DOM to render expanded elements
+        const timer = setTimeout(() => {
+          window.scrollTo(0, parseInt(savedScrollY, 10));
+        }, 150);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [loading]);
+
   const [uploadingRegId, setUploadingRegId] = useState(null);
 
   // Recover registration modal state from localStorage if application reloads
@@ -160,7 +212,13 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
     }
   };
 
+  const handleChooseFileClick = (registrationId) => {
+    sessionStorage.setItem('pendingUpload', JSON.stringify({ registrationId, timestamp: Date.now() }));
+  };
+
   const handleSolutionUpload = async (e, registrationId) => {
+    sessionStorage.removeItem('pendingUpload');
+    setInterruptedUploadRegId(null);
     const file = e.target.files[0];
     if (!file) return;
 
@@ -1203,6 +1261,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                                       />
                                       <label 
                                         htmlFor={`solution-${reg.id}`}
+                                        onClick={() => handleChooseFileClick(reg.id)}
                                         className={`px-4 py-2 text-xs font-semibold rounded-xl cursor-pointer shadow-sm transition inline-block text-center ${
                                           uploadingRegId === reg.id
                                             ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
@@ -1213,6 +1272,11 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                                       >
                                         {uploadingRegId === reg.id ? 'Uploading...' : reg.solution_url ? 'Change File' : 'Choose File'}
                                       </label>
+                                      {interruptedUploadRegId === reg.id && (
+                                        <p className="text-[10px] text-rose-500 font-semibold mt-2 animate-fade-in">
+                                          ⚠️ Your upload may have been interrupted — please try selecting the file again.
+                                        </p>
+                                      )}
                                     </div>
                                   </div>
                                 )}
