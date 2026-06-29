@@ -331,49 +331,50 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
     setProfileSuccessMsg('');
     setProfileErrorMsg('');
 
-    // 1. Update public.profiles table
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({
-        full_name: profile.full_name,
-        username: (profile.username || '').toLowerCase().trim(),
-        roll_number: profile.roll_number,
-        branch: profile.branch,
-        semester: profile.semester,
-        phone: profile.phone
-      })
-      .eq('id', user.id);
+    try {
+      // 1. Update public.profiles table
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          full_name: profile.full_name,
+          username: (profile.username || '').toLowerCase().trim(),
+          roll_number: profile.roll_number,
+          branch: profile.branch,
+          semester: profile.semester,
+          phone: profile.phone
+        })
+        .eq('id', user.id);
 
-    if (profileError) {
-      console.error('Failed to sync profile with database:', profileError);
-      setProfileErrorMsg(profileError.message || 'Failed to update database record.');
+      if (profileError) throw profileError;
+
+      // 2. Sync full name to Supabase Auth metadata
+      const { error: authError } = await supabase.auth.updateUser({
+        data: { full_name: profile.full_name }
+      });
+
+      if (authError) throw authError;
+
+      // 3. Success Feedback
+      setProfileSuccessMsg('Profile updated successfully!');
+      // Update local session user metadata
+      user.user_metadata = { ...user.user_metadata, ...profile };
+
+      // Auto-dismiss success alert after exactly 3000ms (3 seconds)
+      setTimeout(() => {
+        setProfileSuccessMsg('');
+      }, 3000);
+
+    } catch (err) {
+      console.error('Failed to sync profile:', err);
+      // Gracefully handles if another account has already claimed the chosen handle
+      if (err.message?.includes('profiles_username_key') || err.code === '23505') {
+        setProfileErrorMsg("❌ This username is already taken! Please try another one.");
+      } else {
+        setProfileErrorMsg(err.message || 'Failed to update database record.');
+      }
+    } finally {
       setProfileLoading(false);
-      return;
     }
-
-    // 2. Sync full name to Supabase Auth metadata
-    const { error: authError } = await supabase.auth.updateUser({
-      data: { full_name: profile.full_name }
-    });
-
-    if (authError) {
-      console.error('Failed to sync full name with Supabase Auth:', authError);
-      setProfileErrorMsg(authError.message || 'Failed to sync authentication profile details.');
-      setProfileLoading(false);
-      return;
-    }
-
-    // 3. Success Feedback
-    setProfileSuccessMsg('Profile updated successfully!');
-    // Update local session user metadata
-    user.user_metadata = { ...user.user_metadata, ...profile };
-
-    // Auto-dismiss success alert after exactly 3000ms (3 seconds)
-    setTimeout(() => {
-      setProfileSuccessMsg('');
-    }, 3000);
-
-    setProfileLoading(false);
   };
 
   const handleCopyCode = () => {
@@ -1374,14 +1375,27 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                     </div>
 
                     {/* Username */}
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Username</label>
-                      <input
-                        type="text"
-                        readOnly
-                        value={profile.username ? `@${profile.username}` : ''}
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-400 text-xs cursor-not-allowed outline-none select-none font-mono"
-                      />
+                    <div className="flex flex-col gap-1.5 w-full">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                        Username
+                      </label>
+                      <div className="relative flex items-center">
+                        <span className="absolute left-3 text-slate-400 text-xs font-bold font-mono">@</span>
+                        <input
+                          type="text"
+                          value={profile.username || ''}
+                          onChange={(e) => {
+                            const cleanVal = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                            setProfile({ ...profile, username: cleanVal });
+                          }}
+                          placeholder="choose_username"
+                          maxLength={25}
+                          className="w-full h-10 pl-7 pr-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 font-medium font-mono focus:outline-none focus:border-blue-500 transition-all shadow-sm"
+                        />
+                      </div>
+                      <p className="text-[10px] text-slate-400 italic">
+                        You can change your username at any time. Only lowercase letters, numbers, and underscores are valid.
+                      </p>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
