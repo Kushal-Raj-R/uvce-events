@@ -130,6 +130,81 @@ export default function RegistrantsListModal({ event, onClose }) {
     document.body.removeChild(link);
   };
 
+  const handleExportPDF = () => {
+    // 1. Establish a new detached print viewport canvas context window
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    
+    // 2. Map structural registration items to safe table rows
+    const tableRows = registrations.map(reg => {
+      const student = reg.profiles || {};
+      const resolvedEmail = student.email || reg.student?.email || reg.profiles?.email_address || reg.student?.email_address || 'Pending sync';
+      
+      return `
+        <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11px;">
+          <td style="padding: 10px; font-weight: 600; color: #0f172a;">${student.full_name || 'Anonymous User'}</td>
+          <td style="padding: 10px; font-family: monospace;">${student.roll_number || 'N/A'}</td>
+          ${event?.event_scope === 'ALL' ? `<td style="padding: 10px; color: #2563eb; font-weight: bold;">${student.college_name || 'UVCE'}</td>` : ''}
+          <td style="padding: 10px;">${student.branch || 'N/A'}</td>
+          <td style="padding: 10px;">${student.semester || 'N/A'}</td>
+          <td style="padding: 10px; color: #475569;">${resolvedEmail}</td>
+          <td style="padding: 10px; font-family: monospace;">${student.phone || 'N/A'}</td>
+          <td style="padding: 10px;">
+            <div style="font-size: 10px; max-width: 250px; word-wrap: break-word;">
+              ${Object.entries(reg.custom_answers || {}).map(([q, a]) => `<div><strong>${q}:</strong> ${a}</div>`).join('') || 'N/A'}
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // 3. Assemble the full landscape PDF layout document body
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${event?.title || 'Registrations'}_Report</title>
+        <style>
+          @page { size: A4 landscape; margin: 15mm; }
+          body { font-family: system-ui, sans-serif; color: #1e293b; margin: 0; }
+          .header { border-bottom: 2px solid #2563eb; padding-bottom: 10px; margin-bottom: 20px; }
+          table { width: 100%; border-collapse: collapse; text-align: left; }
+          th { background-color: #1e3a8a; color: white; padding: 12px 10px; font-size: 11px; text-transform: uppercase; }
+          tr:nth-child(even) { background-color: #f8fafc; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1 style="margin: 0; font-size: 22px; color: #1e3a8a;">Event Registration Roster</h1>
+          <p style="margin: 4px 0 0 0; font-size: 12px; color: #64748b;">Event: <strong>${event?.title || ''}</strong> | Scope: ${event?.event_scope === 'ALL' ? 'Open to All' : 'UVCE Internal'}</p>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Student Name</th>
+              <th>Roll Number</th>
+              ${event?.event_scope === 'ALL' ? '<th>College</th>' : ''}
+              <th>Branch</th>
+              <th>Semester</th>
+              <th>Email</th>
+              <th>Phone Number</th>
+              <th>Custom Answers</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows}
+          </tbody>
+        </table>
+        <script>
+          // Auto-trigger print conversion matrix as soon as content populates the frame
+          window.onload = function() { window.print(); window.close(); };
+        </script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl max-w-4xl w-full shadow-2xl overflow-hidden animate-fade-in flex flex-col max-h-[85vh]">
@@ -143,13 +218,24 @@ export default function RegistrantsListModal({ event, onClose }) {
           </div>
           <div className="flex items-center gap-3">
             {registrations.length > 0 && (
-              <button
-                onClick={exportToCSV}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-gray-600 transition-colors"
-              >
-                <DownloadIcon className="w-4 h-4" />
-                Export CSV
-              </button>
+              <>
+                <button
+                  onClick={exportToCSV}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-gray-600 transition-colors"
+                >
+                  <DownloadIcon className="w-4 h-4" />
+                  Export CSV
+                </button>
+                <button
+                  onClick={handleExportPDF}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-xs font-semibold text-white transition-colors shadow-sm active:scale-95 transition-all"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                  Export PDF
+                </button>
+              </>
             )}
             <button
               onClick={onClose}
