@@ -76,61 +76,93 @@ export default function RegistrantsListModal({ event, onClose }) {
     // 1. Establish a new detached print viewport canvas context window
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
+
+    // 2. Build a lookup dictionary mapping custom field IDs to real human-readable questions
+    const questionLookup = {};
+    if (event?.custom_fields && Array.isArray(event.custom_fields)) {
+      event.custom_fields.forEach(q => {
+        questionLookup[q.id] = q.label;
+      });
+    }
+
+    // 3. Dynamic Column Width Weights Calculation
+    const isAllColleges = event?.event_scope === 'ALL';
+    const baseColWidth = isAllColleges ? "11%" : "13%";
+    const emailColWidth = isAllColleges ? "16%" : "18%";
     
-    // 2. Map structural registration items to safe table rows
+    // 4. Map structural registration items to safe table rows
     const tableRows = registrations.map(reg => {
       const student = reg.profiles || {};
       const resolvedEmail = student.email || reg.student?.email || reg.profiles?.email_address || reg.student?.email_address || 'Pending sync';
       
+      // Convert JSON database answers into readable "Question: Answer" layout blocks
+      const formattedAnswers = Object.entries(reg.custom_answers || {})
+        .map(([fieldId, answer]) => {
+          if (fieldId === '_team_name') {
+            return `<div style="margin-bottom: 4px; background: #f1f5f9; padding: 4px 6px; border-radius: 4px;">
+                      <strong style="color: #475569;">Team Name:</strong> ${answer}
+                    </div>`;
+          }
+          const realQuestion = questionLookup[fieldId] || fieldId; // Fallback to raw ID if not found
+          return `<div style="margin-bottom: 4px; background: #f1f5f9; padding: 4px 6px; border-radius: 4px;">
+                    <strong style="color: #475569;">${realQuestion}:</strong> ${answer}
+                  </div>`;
+        }).join('');
+
       return `
-        <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11px;">
+        <tr style="border-bottom: 1px solid #e2e8f0; font-size: 10px; page-break-inside: avoid;">
           <td style="padding: 10px; font-weight: 600; color: #0f172a;">${student.full_name || 'Anonymous User'}</td>
-          <td style="padding: 10px; font-family: monospace;">${student.roll_number || 'N/A'}</td>
-          ${event?.event_scope === 'ALL' ? `<td style="padding: 10px; color: #2563eb; font-weight: bold;">${student.college_name || 'UVCE'}</td>` : ''}
-          <td style="padding: 10px;">${student.branch || 'N/A'}</td>
-          <td style="padding: 10px;">${student.semester || 'N/A'}</td>
-          <td style="padding: 10px; color: #475569;">${resolvedEmail}</td>
-          <td style="padding: 10px; font-family: monospace;">${student.phone || 'N/A'}</td>
-          <td style="padding: 10px;">
-            <div style="font-size: 10px; max-width: 250px; word-wrap: break-word;">
-              ${Object.entries(reg.custom_answers || {}).map(([q, a]) => `<div><strong>${q}:</strong> ${a}</div>`).join('') || 'N/A'}
-            </div>
-          </td>
+          <td style="padding: 10px; font-family: monospace; color: #334155;">${student.roll_number || 'N/A'}</td>
+          ${isAllColleges ? `<td style="padding: 10px; color: #2563eb; font-weight: bold;">${student.college_name || 'UVCE'}</td>` : ''}
+          <td style="padding: 10px; color: #475569;">${student.branch || 'N/A'}</td>
+          <td style="padding: 10px; color: #475569;">${student.semester || 'N/A'}</td>
+          <td style="padding: 10px; color: #475569; word-break: break-all;">${resolvedEmail}</td>
+          <td style="padding: 10px; font-family: monospace; color: #334155;">${student.phone || 'N/A'}</td>
+          <td style="padding: 10px; vertical-align: top;">${formattedAnswers || '<span style="color:#94a3b8;">N/A</span>'}</td>
         </tr>
       `;
     }).join('');
 
-    // 3. Assemble the full landscape PDF layout document body
+    // 5. Compile document with fluid table properties
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
       <head>
         <title>${event?.title || 'Registrations'}_Report</title>
         <style>
-          @page { size: A4 landscape; margin: 15mm; }
-          body { font-family: system-ui, sans-serif; color: #1e293b; margin: 0; }
-          .header { border-bottom: 2px solid #2563eb; padding-bottom: 10px; margin-bottom: 20px; }
-          table { width: 100%; border-collapse: collapse; text-align: left; }
-          th { background-color: #1e3a8a; color: white; padding: 12px 10px; font-size: 11px; text-transform: uppercase; }
+          @page { size: A4 landscape; margin: 12mm 10mm; }
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1e293b; margin: 0; }
+          .header { border-bottom: 2px solid #2563eb; padding-bottom: 10px; margin-bottom: 15px; }
+          
+          /* 🚀 DYNAMIC AUTO-SIZING TABLE SETUP */
+          table { 
+            width: 100%; 
+            table-layout: auto; 
+            border-collapse: collapse; 
+            text-align: left;
+            page-break-inside: auto;
+          }
+          th { background-color: #1e3a8a; color: white; padding: 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+          tr { page-break-inside: avoid; page-break-after: auto; }
           tr:nth-child(even) { background-color: #f8fafc; }
         </style>
       </head>
       <body>
         <div class="header">
-          <h1 style="margin: 0; font-size: 22px; color: #1e3a8a;">Event Registration Roster</h1>
-          <p style="margin: 4px 0 0 0; font-size: 12px; color: #64748b;">Event: <strong>${event?.title || ''}</strong> | Scope: ${event?.event_scope === 'ALL' ? 'Open to All' : 'UVCE Internal'}</p>
+          <h1 style="margin: 0; font-size: 20px; color: #1e3a8a;">Event Registration Roster</h1>
+          <p style="margin: 4px 0 0 0; font-size: 11px; color: #64748b;">Event: <strong>${event?.title || 'Event Roster'}</strong> | Scope: ${isAllColleges ? 'Open to All' : 'UVCE Internal'}</p>
         </div>
         <table>
           <thead>
             <tr>
-              <th>Student Name</th>
-              <th>Roll Number</th>
-              ${event?.event_scope === 'ALL' ? '<th>College</th>' : ''}
-              <th>Branch</th>
-              <th>Semester</th>
-              <th>Email</th>
-              <th>Phone Number</th>
-              <th>Custom Answers</th>
+              <th style="width: ${baseColWidth};">Student Name</th>
+              <th style="width: ${baseColWidth};">Roll Number</th>
+              ${isAllColleges ? `<th style="width: 10%;">College</th>` : ''}
+              <th style="width: 8%;">Branch</th>
+              <th style="width: 9%;">Semester</th>
+              <th style="width: ${emailColWidth};">Email</th>
+              <th style="width: ${baseColWidth};">Phone Number</th>
+              <th style="width: auto;">Custom Form Answers</th>
             </tr>
           </thead>
           <tbody>
@@ -138,7 +170,6 @@ export default function RegistrantsListModal({ event, onClose }) {
           </tbody>
         </table>
         <script>
-          // Auto-trigger print conversion matrix as soon as content populates the frame
           window.onload = function() { window.print(); window.close(); };
         </script>
       </body>
