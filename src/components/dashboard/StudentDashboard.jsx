@@ -1218,31 +1218,6 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* Left panel: Share & Add Code */}
                       <div className="space-y-6">
-                        {/* Share Code */}
-                        <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5">
-                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Your Shareable Connection Code</span>
-                          <div className="flex items-center gap-3 mt-2">
-                            <span className="font-mono bg-blue-50 text-blue-700 px-4 py-2 rounded-xl text-base font-bold tracking-widest border border-blue-100 shadow-inner">
-                              {profile?.friend_code || '------'}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={handleCopyCode}
-                              className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm active:scale-95 flex items-center gap-1.5"
-                            >
-                              {copiedCode ? (
-                                <>
-                                  <CheckIcon className="w-3.5 h-3.5 text-emerald-500" />
-                                  <span className="text-emerald-600">Copied!</span>
-                                </>
-                              ) : (
-                                <span>Copy Code</span>
-                              )}
-                            </button>
-                          </div>
-                          <p className="text-[10px] text-slate-400 mt-2">Share this code with other students so they can invite you to their squad.</p>
-                        </div>
-
                         {/* Add Friend Code */}
                         <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 space-y-3">
                           <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Connect with a Student</span>
@@ -1297,6 +1272,31 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                               </div>
                             )}
                           </div>
+                        </div>
+
+                        {/* Share Code */}
+                        <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Your Shareable Connection Code</span>
+                          <div className="flex items-center gap-3 mt-2">
+                            <span className="font-mono bg-blue-50 text-blue-700 px-4 py-2 rounded-xl text-base font-bold tracking-widest border border-blue-100 shadow-inner">
+                              {profile?.friend_code || '------'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={handleCopyCode}
+                              className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm active:scale-95 flex items-center gap-1.5"
+                            >
+                              {copiedCode ? (
+                                <>
+                                  <CheckIcon className="w-3.5 h-3.5 text-emerald-500" />
+                                  <span className="text-emerald-600">Copied!</span>
+                                </>
+                              ) : (
+                                <span>Copy Code</span>
+                              )}
+                            </button>
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-2">Share this code with other students so they can invite you to their squad.</p>
                         </div>
                       </div>
 
