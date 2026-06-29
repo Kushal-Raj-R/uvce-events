@@ -82,6 +82,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
   // Profile Edit State
   const [profile, setProfile] = useState({
     full_name: '',
+    username: '',
     roll_number: '',
     branch: '',
     semester: '',
@@ -253,6 +254,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
     if (data) {
       setProfile({
         full_name: data.full_name || '',
+        username: data.username || '',
         roll_number: data.roll_number || '',
         branch: data.branch || '',
         semester: data.semester || '',
@@ -334,6 +336,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
       .from('profiles')
       .update({
         full_name: profile.full_name,
+        username: (profile.username || '').toLowerCase().trim(),
         roll_number: profile.roll_number,
         branch: profile.branch,
         semester: profile.semester,
@@ -1367,6 +1370,17 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                         value={profile.full_name}
                         onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
                         className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs"
+                      />
+                    </div>
+
+                    {/* Username */}
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Username</label>
+                      <input
+                        type="text"
+                        readOnly
+                        value={profile.username ? `@${profile.username}` : ''}
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-400 text-xs cursor-not-allowed outline-none select-none font-mono"
                       />
                     </div>
 
