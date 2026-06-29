@@ -240,6 +240,9 @@ export default function RegistrantsListModal({ event, onClose }) {
                     {event.custom_fields && event.custom_fields.map(field => (
                       <th key={field.id} className="py-3 px-4 min-w-[150px] max-w-xs whitespace-normal break-words">{field.label}</th>
                     ))}
+                    {event?.participation_type === 'Solo' && (
+                      <th className="py-3 px-4 text-slate-500 font-bold uppercase tracking-wider min-w-[120px] whitespace-normal break-words">Solution Link</th>
+                    )}
                     <th className="py-3 px-4 text-right min-w-[120px] whitespace-normal break-words">Registration Date</th>
                   </tr>
                 </thead>
@@ -288,6 +291,22 @@ export default function RegistrantsListModal({ event, onClose }) {
                           );
                         })}
 
+                        {event?.participation_type === 'Solo' && (
+                          <td className="py-3.5 px-4 min-w-[120px] whitespace-normal break-words">
+                            {reg.solution_url ? (
+                              <a 
+                                href={reg.solution_url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-100 text-emerald-700 font-bold rounded-lg hover:bg-emerald-100/70 transition-all shadow-sm cursor-pointer whitespace-nowrap text-[11px]"
+                              >
+                                <span>📄</span> View Solution
+                              </a>
+                            ) : (
+                              <span className="text-slate-400 font-normal italic">Pending Upload</span>
+                            )}
+                          </td>
+                        )}
                         <td className="py-3.5 px-4 text-right text-gray-400 min-w-[120px] whitespace-normal break-words">
                           {reg.created_at ? new Date(reg.created_at).toLocaleDateString() : 'N/A'}
                         </td>
