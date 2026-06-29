@@ -1417,13 +1417,10 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                           className="w-full h-10 pl-7 pr-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 font-medium font-mono focus:outline-none focus:border-blue-500 transition-all shadow-sm"
                         />
                       </div>
-                      <p className="text-[10px] text-slate-400 italic">
-                        You can change your username at any time. Only lowercase letters, numbers, and underscores are valid.
-                      </p>
                     </div>
 
                     {/* IMMUTABLE REAL COLLEGE NAME DISPLAY BOX */}
-                    <div className="flex flex-col gap-1.5 w-full">
+                    <div className="flex flex-col gap-1.5 w-full mt-4">
                       <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                         College / Institution
                       </label>
@@ -1437,9 +1434,6 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                         }
                         className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-500 font-medium cursor-not-allowed select-none shadow-sm uppercase"
                       />
-                      <p className="text-[10px] text-slate-400 italic">
-                        🔒 College affiliation is verified during registration and cannot be modified from settings.
-                      </p>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
