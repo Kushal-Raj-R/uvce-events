@@ -20,7 +20,7 @@ export default function RegistrantsListModal({ event, onClose }) {
           custom_answers,
           solution_url,
           created_at,
-          profiles:student_id (full_name, roll_number, branch, semester, phone, email, role)
+          profiles:student_id (full_name, username, college_name, roll_number, branch, semester, phone, email, role)
         `)
         .eq('event_id', event.id);
 
@@ -193,6 +193,9 @@ export default function RegistrantsListModal({ event, onClose }) {
                   <tr className="bg-slate-50 border-b border-slate-100 text-xs font-bold text-gray-400 tracking-wider">
                     <th className="py-3 px-4 min-w-[140px] whitespace-normal break-words">Student Name</th>
                     <th className="py-3 px-4 min-w-[120px] whitespace-normal break-words">Roll Number</th>
+                    {event?.event_scope === 'ALL' && (
+                      <th className="py-3 px-4 min-w-[150px] whitespace-normal break-words animate-fade-in">College</th>
+                    )}
                     <th className="py-3 px-4 min-w-[100px] whitespace-normal break-words">Branch</th>
                     <th className="py-3 px-4 min-w-[110px] whitespace-normal break-words">Semester</th>
                     <th className="py-3 px-4 min-w-[180px] whitespace-normal break-words">Email</th>
@@ -216,6 +219,11 @@ export default function RegistrantsListModal({ event, onClose }) {
                           {student.full_name || 'Anonymous User'}
                         </td>
                         <td className="py-3.5 px-4 font-medium min-w-[120px] whitespace-normal break-words">{student.roll_number || 'N/A'}</td>
+                        {event?.event_scope === 'ALL' && (
+                          <td className="py-3.5 px-4 font-bold text-blue-600 uppercase tracking-wide min-w-[150px] whitespace-normal break-words animate-fade-in">
+                            {student.college_name || 'UVCE'}
+                          </td>
+                        )}
                         <td className="py-3.5 px-4 text-gray-500 min-w-[100px] whitespace-normal break-words">{student.branch || 'N/A'}</td>
                         <td className="py-3.5 px-4 font-medium text-primary-500 min-w-[110px] whitespace-normal break-words">{student.semester || 'N/A'}</td>
                         <td className="py-3.5 px-4 text-gray-500 min-w-[180px] whitespace-normal break-words">{resolvedEmail}</td>
