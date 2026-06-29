@@ -124,7 +124,7 @@ export default function AuthScreen({ onAuthSuccess }) {
         <div className="max-w-md mx-auto">
           {/* Logo & Headline */}
           <h1 className="text-4xl lg:text-5xl font-black text-primary-500 tracking-tight mb-4">
-            UVCEevents
+            UVCEvents
           </h1>
           <p className="text-gray-600 text-lg leading-relaxed mb-12">
             The centralized hub for academic excellence, workshops, and student networking.

@@ -1,4 +1,4 @@
--- Database Schema & RLS Policies: College Event Registration Portal (UVCEevents)
+-- Database Schema & RLS Policies: College Event Registration Portal (UVCEvents)
 
 -- ==========================================
 -- 1. PROFILES TABLE & POLICIES

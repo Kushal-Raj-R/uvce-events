@@ -565,7 +565,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
           {/* Sidebar Brand Logo */}
           <div>
             <h2 className="text-xl font-black text-primary-500 tracking-tight flex items-center gap-2">
-              UVCEevents
+              UVCEvents
             </h2>
             <span className="text-[9px] font-bold text-gray-400 tracking-widest uppercase block mt-1">
               Academic Portal
