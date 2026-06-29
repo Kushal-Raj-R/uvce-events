@@ -382,7 +382,11 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
     );
   }
 
-  const customFields = event.custom_fields || [];
+  const customFields = event?.custom_fields || [];
+  const customFieldsLength = customFields.length;
+  const totalSteps = customFieldsLength > 0 ? 2 : 1;
+  const headerStepText = `Event Registration — Step ${currentStep} of ${totalSteps}`;
+  const isLastStep = currentStep === totalSteps;
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -392,15 +396,17 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
         <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
           <div>
             <h3 className="text-base font-bold text-slate-800">
-              Event Registration — Step {currentStep} of 2
+              {headerStepText}
             </h3>
             <p className="text-xs text-primary-600 font-semibold truncate max-w-[320px] mt-0.5">{event.title}</p>
           </div>
           <div className="flex items-center gap-4">
-            <div className="flex gap-1">
-              <div className={`w-6 h-1.5 rounded-full transition-all ${currentStep >= 1 ? 'bg-blue-600' : 'bg-slate-200'}`} />
-              <div className={`w-6 h-1.5 rounded-full transition-all ${currentStep === 2 ? 'bg-blue-600' : 'bg-slate-200'}`} />
-            </div>
+            {totalSteps > 1 && (
+              <div className="flex gap-1">
+                <div className={`w-6 h-1.5 rounded-full transition-all ${currentStep >= 1 ? 'bg-blue-600' : 'bg-slate-200'}`} />
+                <div className={`w-6 h-1.5 rounded-full transition-all ${currentStep === 2 ? 'bg-blue-600' : 'bg-slate-200'}`} />
+              </div>
+            )}
             <button
               onClick={handleClose}
               className="text-gray-400 hover:text-gray-600 transition-colors ml-2"
@@ -737,21 +743,17 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
 
               {/* 3. MODAL NAVIGATION ACTION FOOTER */}
               <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
-                {currentStep === 1 ? (
+                {currentStep > 1 ? (
+                  <button type="button" onClick={() => handleStepNavigation(currentStep - 1)} className="px-4 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
+                    ← Back
+                  </button>
+                ) : (
                   <button type="button" onClick={handleClose} className="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700">
                     Cancel
                   </button>
-                ) : (
-                  <button type="button" onClick={() => handleStepNavigation(1)} className="px-4 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
-                    ← Back
-                  </button>
                 )}
 
-                {currentStep === 1 ? (
-                  <button type="button" onClick={() => handleStepNavigation(2)} className="px-5 py-2.5 bg-blue-600 text-white font-semibold text-sm rounded-xl hover:bg-blue-700 shadow-sm transition-all">
-                    Next Step →
-                  </button>
-                ) : (
+                {isLastStep ? (
                   <button type="button" onClick={handleSubmit} disabled={loading} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl shadow-sm transition-all flex items-center gap-2">
                     {loading ? (
                       <>
@@ -764,6 +766,10 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
                     ) : (
                       'Submit Registration'
                     )}
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => handleStepNavigation(currentStep + 1)} className="px-5 py-2.5 bg-blue-600 text-white font-semibold text-sm rounded-xl hover:bg-blue-700 shadow-sm transition-all">
+                    Next Step →
                   </button>
                 )}
               </div>
