@@ -362,7 +362,6 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
         .update({
           full_name: profile.full_name,
           username: (profile.username || '').toLowerCase().trim(),
-          college_name: profile.college_name,
           roll_number: profile.roll_number,
           branch: profile.branch,
           semester: profile.semester,
@@ -1423,17 +1422,24 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                       </p>
                     </div>
 
-                    {/* COLLEGE SELECTION FIELD */}
+                    {/* IMMUTABLE COLLEGE / INSTITUTION DISPLAY BOX */}
                     <div className="flex flex-col gap-1.5 w-full">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">College / Institution</label>
-                      <select 
-                        value={profile.college_name || 'UVCE'}
-                        onChange={(e) => setProfile({ ...profile, college_name: e.target.value })}
-                        className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 font-medium focus:outline-none focus:border-blue-500 transition-all shadow-sm cursor-pointer"
-                      >
-                        <option value="UVCE">University Visvesvaraya College of Engineering (UVCE)</option>
-                        <option value="Other">Other Institution</option>
-                      </select>
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                        College / Institution
+                      </label>
+                      <input
+                        type="text"
+                        disabled
+                        value={
+                          profile?.college_name === 'UVCE' 
+                            ? 'University Visvesvaraya College of Engineering (UVCE)' 
+                            : profile?.college_name || 'Other Institution'
+                        }
+                        className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-400 font-medium cursor-not-allowed select-none shadow-sm"
+                      />
+                      <p className="text-[10px] text-slate-400 italic">
+                        🔒 College affiliation is verified during registration and cannot be modified from settings.
+                      </p>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
