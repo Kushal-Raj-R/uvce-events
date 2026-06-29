@@ -6,6 +6,7 @@
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
     full_name TEXT NOT NULL,
+    username TEXT UNIQUE,
     roll_number TEXT,
     branch TEXT,
     semester TEXT,
@@ -190,10 +191,11 @@ WITH CHECK (
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, full_name, roll_number, branch, semester, phone, role, friend_code)
+  INSERT INTO public.profiles (id, full_name, username, roll_number, branch, semester, phone, role, friend_code)
   VALUES (
     new.id,
     COALESCE(new.raw_user_meta_data->>'full_name', ''),
+    COALESCE(new.raw_user_meta_data->>'username', ''),
     COALESCE(new.raw_user_meta_data->>'roll_number', ''),
     COALESCE(new.raw_user_meta_data->>'branch', ''),
     COALESCE(new.raw_user_meta_data->>'semester', ''),

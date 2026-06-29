@@ -74,6 +74,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [friendCodeInput, setFriendCodeInput] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
   const [inviteSuccess, setInviteSuccess] = useState('');
   const [inviteError, setInviteError] = useState('');
   const [copiedCode, setCopiedCode] = useState(false);
@@ -380,29 +381,61 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
     }
   };
 
-  const handleSendInvite = async (e) => {
-    e.preventDefault();
+  const handleSearchStudents = async (query) => {
+    setFriendCodeInput(query);
+    if (query.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    
+    const isCode = /^[a-f0-9]{8}$/i.test(query.trim());
+    const queryTarget = supabase.from('profiles').select('id, username, roll_number, full_name');
+    
+    const { data } = isCode 
+      ? await queryTarget.eq('friend_code', query.trim().toLowerCase())
+      : await queryTarget.ilike('username', `%${query.trim()}%`).limit(5);
+       
+    setSearchResults(data || []);
+  };
+
+  const handleSendInvite = async (targetIdOrCode) => {
     setInviteSuccess('');
     setInviteError('');
 
-    const code = friendCodeInput.trim();
-    if (!code) return;
+    let query = typeof targetIdOrCode === 'string' ? targetIdOrCode : friendCodeInput.trim();
+    if (!query) return;
 
-    if (code.toLowerCase() === profile.friend_code?.toLowerCase()) {
-      setInviteError("You cannot send a connection request to yourself.");
-      return;
-    }
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(query);
 
     try {
-      // 1. Find profile by friend code
-      const { data: targetProfile, error: profileErr } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('friend_code', code)
-        .single();
+      let targetProfile = null;
+      let profileErr = null;
+
+      if (isUuid) {
+        const res = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', query)
+          .single();
+        targetProfile = res.data;
+        profileErr = res.error;
+      } else {
+        const isCode = /^[a-z0-9]{8}$/i.test(query);
+        const queryTarget = supabase.from('profiles').select('*');
+        const res = isCode 
+          ? await queryTarget.eq('friend_code', query.toLowerCase()).single()
+          : await queryTarget.eq('username', query.toLowerCase()).single();
+        targetProfile = res.data;
+        profileErr = res.error;
+      }
 
       if (profileErr || !targetProfile) {
-        setInviteError("No student profile found with this connection code.");
+        setInviteError("No student profile found with this username or connection code.");
+        return;
+      }
+
+      if (targetProfile.id === user.id) {
+        setInviteError("You cannot send a connection request to yourself.");
         return;
       }
 
@@ -412,8 +445,8 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
         .select('*');
 
       const duplicate = existingConns?.find(conn => {
-        const sId = conn['profiles!sender_id']?.id || conn.sender_id;
-        const rId = conn['profiles!receiver_id']?.id || conn.receiver_id;
+        const sId = (typeof conn.sender_id === 'object' && conn.sender_id !== null) ? conn.sender_id.id : conn.sender_id;
+        const rId = (typeof conn.receiver_id === 'object' && conn.receiver_id !== null) ? conn.receiver_id.id : conn.receiver_id;
         return (
           (sId === user.id && rId === targetProfile.id) ||
           (sId === targetProfile.id && rId === user.id)
@@ -423,7 +456,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
       if (duplicate) {
         setInviteError(
           duplicate.status === 'ACCEPTED' 
-            ? `You are already connected with ${targetProfile.full_name}.`
+            ? `You are already connected with ${targetProfile.full_name || targetProfile.username}.`
             : 'A pending connection request already exists between you.'
         );
         return;
@@ -443,8 +476,9 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
         return;
       }
 
-      setInviteSuccess(`Connection request sent successfully to ${targetProfile.full_name}!`);
+      setInviteSuccess(`Connection request sent successfully to ${targetProfile.full_name || targetProfile.username}!`);
       setFriendCodeInput('');
+      setSearchResults([]);
       fetchDashboardData();
     } catch (err) {
       console.error(err);
@@ -1220,22 +1254,44 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                             </div>
                           )}
 
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              placeholder="Enter 8-digit friend code..."
-                              value={friendCodeInput}
-                              onChange={(e) => setFriendCodeInput(e.target.value)}
-                              maxLength={8}
-                              className="flex-grow px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-mono tracking-wider"
-                            />
-                            <button
-                              type="button"
-                              onClick={handleSendInvite}
-                              className="bg-primary-500 hover:bg-primary-600 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-all shadow-md active:scale-95 shrink-0"
-                            >
-                              Send Invite
-                            </button>
+                          <div className="relative space-y-2">
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                placeholder="Search username or 8-digit code..."
+                                value={friendCodeInput}
+                                onChange={(e) => handleSearchStudents(e.target.value)}
+                                className="flex-grow px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-mono tracking-wider"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleSendInvite()}
+                                className="bg-primary-500 hover:bg-primary-600 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-all shadow-md active:scale-95 shrink-0"
+                              >
+                                Send Invite
+                              </button>
+                            </div>
+
+                            {/* Search Results Dropdown */}
+                            {searchResults.length > 0 && (
+                              <div className="absolute left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-lg z-50 divide-y divide-slate-100 mt-1 max-h-40 overflow-y-auto">
+                                {searchResults.map((profile) => (
+                                  <button
+                                    key={profile.id}
+                                    type="button"
+                                    onClick={() => {
+                                      handleSendInvite(profile.id);
+                                    }}
+                                    className="w-full text-left px-4 py-2.5 hover:bg-slate-50 text-xs text-slate-700 transition-colors flex items-center justify-between"
+                                  >
+                                    <span>
+                                      @{profile.username || 'user'} ({profile.roll_number || 'N/A'})
+                                    </span>
+                                    <span className="text-[10px] text-blue-500 font-bold">Connect</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

@@ -65,7 +65,8 @@ function createMockClient() {
           role: 'student',
           updated_at: new Date().toISOString(),
           email: 'student@university.edu',
-          friend_code: 'adity123'
+          friend_code: 'adity123',
+          username: 'aditya_sharma'
         },
         {
           id: 'student-uuid-3333',
@@ -77,7 +78,8 @@ function createMockClient() {
           role: 'student',
           updated_at: new Date().toISOString(),
           email: 'rahul@university.edu',
-          friend_code: 'rahul456'
+          friend_code: 'rahul456',
+          username: 'rahul_verma'
         }
       ];
       localStorage.setItem('mock_profiles', JSON.stringify(defaultProfiles));

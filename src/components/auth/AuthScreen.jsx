@@ -11,6 +11,7 @@ export default function AuthScreen({ onAuthSuccess }) {
   
   // Registration metadata
   const [fullName, setFullName] = useState('');
+  const [username, setUsername] = useState('');
   const [phone, setPhone] = useState('');
   const [rollNumber, setRollNumber] = useState('');
   const [branch, setBranch] = useState('');
@@ -60,10 +61,22 @@ export default function AuthScreen({ onAuthSuccess }) {
         setLoading(false);
         return;
       }
-      if (role === 'student' && (!rollNumber || !branch || !semester)) {
-        setErrorMsg('Please fill in Roll Number, Branch, and Semester.');
-        setLoading(false);
-        return;
+      if (role === 'student') {
+        if (!username) {
+          setErrorMsg('Please choose a username.');
+          setLoading(false);
+          return;
+        }
+        if (!/^[a-z0-9_]+$/.test(username)) {
+          setErrorMsg('Username can only contain lowercase letters, numbers, and underscores.');
+          setLoading(false);
+          return;
+        }
+        if (!rollNumber || !branch || !semester) {
+          setErrorMsg('Please fill in Roll Number, Branch, and Semester.');
+          setLoading(false);
+          return;
+        }
       }
 
       const signUpData = {
@@ -75,7 +88,7 @@ export default function AuthScreen({ onAuthSuccess }) {
             phone,
             role,
             ...(role === 'student'
-              ? { roll_number: rollNumber, branch, semester }
+              ? { roll_number: rollNumber, branch, semester, username: username.toLowerCase().trim() }
               : { branch }), // For organizers, branch represents their department
           },
         },
@@ -248,6 +261,23 @@ export default function AuthScreen({ onAuthSuccess }) {
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-sm"
                   />
                 </div>
+
+                {/* Username */}
+                {role === 'student' && (
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Choose Username</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. kushal_raj_123"
+                      pattern="^[a-z0-9_]+$"
+                      title="Username can only contain lowercase letters, numbers, and underscores"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-sm animate-fade-in"
+                    />
+                  </div>
+                )}
 
                 {/* Student specific fields */}
                 {role === 'student' ? (
