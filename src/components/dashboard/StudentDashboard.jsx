@@ -1167,7 +1167,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                                 )}
 
                                 {/* File Submission Section */}
-                                {eventDetails?.allow_submissions && (eventDetails?.custom_notice_text || eventDetails?.attachment_url) && (
+                                {eventDetails?.allow_submissions && (
                                    <div className="border border-dashed border-slate-200 bg-white rounded-2xl p-5 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                                      <div className="flex items-center gap-3">
                                        <div className="w-10 h-10 bg-slate-50 text-slate-500 rounded-full flex items-center justify-center font-bold text-lg shadow-sm">
