@@ -1145,8 +1145,33 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
               {activeTab === 'registrations' && (
                 <div className="space-y-6 animate-fade-in">
                   {myRegistrations.length === 0 ? (
-                    <div className="text-center py-8 text-slate-400 italic">
-                      You haven't registered for any events yet.
+                    <div className="flex flex-col items-center justify-center min-h-[400px] w-full px-4 text-center animate-fadeIn">
+                      <div className="max-w-md p-8 bg-white border border-slate-100 rounded-3xl shadow-sm flex flex-col items-center gap-5">
+                        {/* Visual Icon Element */}
+                        <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-2xl shadow-inner">
+                          📅
+                        </div>
+                        
+                        {/* Structured Messaging Elements */}
+                        <div className="flex flex-col gap-1.5">
+                          <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">
+                            No Registered Events Found
+                          </h3>
+                          <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                            Looks like you haven't joined any events yet! Dive into the latest academic and technical fests happening around campus and lock in your spot today.
+                          </p>
+                        </div>
+
+                        {/* Primary Redirection Portal Navigation Trigger */}
+                        <button
+                          onClick={() => {
+                            setActiveTab('upcoming');
+                          }}
+                          className="mt-2 h-10 px-6 bg-blue-600 text-white font-bold text-xs rounded-xl hover:bg-blue-700 active:scale-95 shadow-md shadow-blue-600/10 hover:shadow-blue-600/20 transition-all flex items-center gap-2"
+                        >
+                          <span>🚀</span> Explore Upcoming Events
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <div className="space-y-3">
