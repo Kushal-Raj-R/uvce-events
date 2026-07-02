@@ -319,11 +319,6 @@ export default function AuthScreen({ onAuthSuccess }) {
                         onChange={(e) => setRollNumber(e.target.value)}
                         className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-sm"
                       />
-                      {errorMsg && errorMsg.includes('Roll Number') && (
-                        <div className="mt-2 p-3 bg-rose-50 border border-rose-100 text-rose-600 font-bold text-xs rounded-xl flex items-center gap-2 animate-shake">
-                          ⚠️ {errorMsg}
-                        </div>
-                      )}
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Branch</label>
