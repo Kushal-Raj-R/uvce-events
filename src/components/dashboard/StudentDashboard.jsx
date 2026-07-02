@@ -1728,8 +1728,17 @@ function EventCard({ event, isRegistered, onRegister }) {
     }
   }
 
+  const handleCardClick = () => {
+    if (!isDeadlinePassed && !isUserRegistered) {
+      handleOpenRegisterModal();
+    }
+  };
+
   return (
-    <div className="bg-white rounded-3xl overflow-hidden border border-slate-200/60 shadow-sm flex flex-col justify-between hover:shadow-md hover:border-slate-300/80 transition-all duration-300 group">
+    <div 
+      onClick={handleCardClick}
+      className="bg-white rounded-3xl overflow-hidden border border-slate-200/60 shadow-sm flex flex-col justify-between hover:shadow-md hover:border-slate-300/80 hover:-translate-y-0.5 active:scale-[0.99] cursor-pointer transition-all duration-300 group"
+    >
       {/* Banner */}
       <div className="h-44 bg-slate-100 relative overflow-hidden">
         <img
@@ -1788,12 +1797,11 @@ function EventCard({ event, isRegistered, onRegister }) {
               ✓ Registered
             </div>
           ) : (
-            <button
-              onClick={handleOpenRegisterModal}
-              className="h-9 px-4 bg-blue-600 text-white font-bold text-xs rounded-xl hover:bg-blue-700 active:scale-95 transition-all shadow-sm"
+            <div
+              className="h-9 px-4 bg-blue-600 text-white font-bold text-xs rounded-xl flex items-center justify-center shadow-sm select-none"
             >
               Register Now
-            </button>
+            </div>
           )}
         </div>
       </div>
