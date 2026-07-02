@@ -1628,6 +1628,10 @@ function EventCard({ event, isRegistered, onRegister }) {
   const isUserRegistered = isRegistered;
   const handleOpenRegisterModal = () => onRegister();
 
+  const currentDateTime = new Date();
+  const deadlineDateTime = new Date(event?.registration_deadline);
+  const isDeadlinePassed = event?.registration_deadline ? currentDateTime > deadlineDateTime : false;
+
   return (
     <div className="bg-white rounded-3xl overflow-hidden border border-slate-200/60 shadow-sm flex flex-col justify-between hover:shadow-md hover:border-slate-300/80 transition-all duration-300 group">
       {/* Banner */}
@@ -1672,22 +1676,29 @@ function EventCard({ event, isRegistered, onRegister }) {
           </p>
         </div>
 
-        {/* Action Button */}
-        <div className="flex justify-between items-center mt-4 w-full">
-          <span className="text-xs font-bold text-slate-400 tracking-wider uppercase">Direct Register</span>
-          {isUserRegistered ? (
-            <button 
-              disabled 
-              className="px-4 py-2 bg-emerald-100 text-emerald-700 font-bold text-sm rounded-xl border border-emerald-200 cursor-not-allowed shadow-sm"
+        {/* DYNAMIC REGISTRATION ENFORCEMENT ACTION BUTTON */}
+        <div className="flex items-center justify-between w-full mt-4">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            {event?.is_direct ? 'Direct Register' : 'Squad Entry'}
+          </span>
+
+          {isDeadlinePassed ? (
+            <button
+              disabled
+              className="h-9 px-4 bg-slate-100 text-slate-400 font-bold text-xs rounded-xl cursor-not-allowed select-none border border-slate-200"
             >
-              ✓ Registered
+              🔒 Registration Closed
             </button>
+          ) : isUserRegistered ? (
+            <div className="h-9 px-4 bg-emerald-50 border border-emerald-100 text-emerald-700 font-bold text-xs rounded-xl flex items-center gap-1">
+              ✓ Registered
+            </div>
           ) : (
-            <button 
-              onClick={() => handleOpenRegisterModal(event)} 
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl shadow-md transition-all active:scale-95"
+            <button
+              onClick={handleOpenRegisterModal}
+              className="h-9 px-4 bg-blue-600 text-white font-bold text-xs rounded-xl hover:bg-blue-700 active:scale-95 transition-all shadow-sm"
             >
-              Register Now
+              Register Now →
             </button>
           )}
         </div>

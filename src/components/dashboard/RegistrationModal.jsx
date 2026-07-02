@@ -186,6 +186,12 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
     setLoading(true);
     setErrorMsg('');
 
+    if (event?.registration_deadline && new Date() > new Date(event.registration_deadline)) {
+      setErrorMsg("Error: The registration deadline for this event has already passed.");
+      setLoading(false);
+      return;
+    }
+
     if (event.participation_type === 'Team') {
       if (!teamName.trim()) {
         setErrorMsg('Team Name is required.');
