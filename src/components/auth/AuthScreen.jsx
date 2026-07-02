@@ -147,17 +147,27 @@ export default function AuthScreen({ onAuthSuccess }) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col-reverse md:flex-row bg-slate-50 font-sans">
+    <div className="min-h-screen flex flex-col md:flex-row bg-slate-50 font-sans">
+      {/* 🚀 1. MOBILE-ONLY TOP BRANDING HEADER ROW (Visible ONLY on phones) */}
+      <div className="w-full max-w-md block md:hidden text-left px-8 pt-8 pb-2 animate-fadeIn mx-auto">
+        <h1 className="text-3xl font-black text-primary-500 tracking-tight">UVCEvents</h1>
+        <p className="text-xs text-gray-500 font-medium leading-relaxed mt-1">
+          The centralized hub for academic excellence, workshops, and student networking.
+        </p>
+      </div>
+
       {/* Left Pane - Branding Info */}
-      <div className="w-full md:w-1/2 bg-slate-100 flex flex-col justify-center px-8 py-16 md:px-16 lg:px-24">
+      <div className="w-full md:w-1/2 bg-slate-100 flex flex-col justify-center px-8 py-16 md:px-16 lg:px-24 order-2 md:order-1">
         <div className="max-w-md mx-auto">
           {/* Logo & Headline */}
-          <h1 className="text-4xl lg:text-5xl font-black text-primary-500 tracking-tight mb-4">
-            UVCEvents
-          </h1>
-          <p className="text-gray-600 text-lg leading-relaxed mb-12">
-            The centralized hub for academic excellence, workshops, and student networking.
-          </p>
+          <div className="hidden md:block">
+            <h1 className="text-4xl lg:text-5xl font-black text-primary-500 tracking-tight mb-4">
+              UVCEvents
+            </h1>
+            <p className="text-gray-600 text-lg leading-relaxed mb-12">
+              The centralized hub for academic excellence, workshops, and student networking.
+            </p>
+          </div>
 
           {/* Cards */}
           <div className="space-y-6">
@@ -191,7 +201,7 @@ export default function AuthScreen({ onAuthSuccess }) {
       </div>
 
       {/* Right Pane - Form Details */}
-      <div className="w-full md:w-1/2 bg-white flex flex-col justify-center px-8 py-16 md:px-16 lg:px-24 border-t md:border-t-0 md:border-l border-slate-100">
+      <div className="w-full md:w-1/2 bg-white flex flex-col justify-center px-8 py-16 md:px-16 lg:px-24 border-t md:border-t-0 md:border-l border-slate-100 order-1 md:order-2">
         <div className="max-w-md w-full mx-auto">
           {/* Role Switcher Pills */}
           <div className="bg-slate-100/80 p-1.5 rounded-xl flex gap-1 mb-8">
