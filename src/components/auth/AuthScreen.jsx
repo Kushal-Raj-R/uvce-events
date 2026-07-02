@@ -147,7 +147,7 @@ export default function AuthScreen({ onAuthSuccess }) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-slate-50 font-sans">
+    <div className="min-h-screen flex flex-col-reverse md:flex-row bg-slate-50 font-sans">
       {/* Left Pane - Branding Info */}
       <div className="w-full md:w-1/2 bg-slate-100 flex flex-col justify-center px-8 py-16 md:px-16 lg:px-24">
         <div className="max-w-md mx-auto">
