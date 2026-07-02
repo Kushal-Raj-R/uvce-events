@@ -664,24 +664,28 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
     if (!event.registration_deadline) return true;
 
     try {
-      // 1. Sanitize common custom display text formats (e.g., "7/9/2026 at 12:23 AM" -> "7/9/2026 12:23 AM")
-      const sanitizedDateString = String(event.registration_deadline)
-        .replace(/\bat\b/i, '') // Strips out the word "at" if it exists in the string
-        .trim();
+      // 1. Clean the incoming string from Supabase (handling "at" or raw timestamps)
+      let rawString = String(event.registration_deadline).replace(/\bat\b/i, '').trim();
+      
+      // 2. If it's a standard PostgreSQL timestamp without a trailing Z/+00, 
+      // replace space with "T" so all browsers parse it safely as local time
+      if (!rawString.includes('Z') && !rawString.includes('+')) {
+        rawString = rawString.replace(' ', 'T');
+      }
 
-      const deadlineDate = new Date(sanitizedDateString);
+      const deadlineDate = new Date(rawString);
+      const currentDate = new Date();
 
-      // 2. Fallback check: If the date parsing failed, don't break the layout—default to showing the event
+      // Fallback check: If the date parsing failed, default to displaying the event
       if (isNaN(deadlineDate.getTime())) {
-        console.warn("Could not parse date string format cleanly:", event.registration_deadline);
         return true; 
       }
 
-      // 3. Live Clock evaluation: returns true if the current time hasn't passed the deadline yet
-      return new Date() < deadlineDate;
+      // 3. Simple, straightforward local clock comparison:
+      // If current local time is less than the deadline, the event stays visible!
+      return currentDate < deadlineDate;
     } catch {
-      // Safe fallback option to prevent components from rendering invisibly
-      return true;
+      return true; // Safe fallback block to guarantee visibility on errors
     }
   });
 
@@ -1696,8 +1700,11 @@ function EventCard({ event, isRegistered, onRegister }) {
   let isDeadlinePassed = false;
   if (event?.registration_deadline) {
     try {
-      const sanitized = String(event.registration_deadline).replace(/\bat\b/i, '').trim();
-      const deadlineDate = new Date(sanitized);
+      let rawString = String(event.registration_deadline).replace(/\bat\b/i, '').trim();
+      if (!rawString.includes('Z') && !rawString.includes('+')) {
+        rawString = rawString.replace(' ', 'T');
+      }
+      const deadlineDate = new Date(rawString);
       if (!isNaN(deadlineDate.getTime())) {
         isDeadlinePassed = currentDateTime > deadlineDate;
       }
