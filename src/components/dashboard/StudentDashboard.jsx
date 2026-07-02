@@ -280,12 +280,10 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
     }
 
     // Fetch all active/open events respecting visibility scope
-    const currentTimestamp = new Date().toISOString();
     let eventsQuery = supabase
       .from('events')
       .select('*')
-      .eq('status', 'OPEN')
-      .gte('registration_deadline', currentTimestamp);
+      .eq('status', 'OPEN');
 
     if (studentCollege !== 'UVCE') {
       // If a student is NOT from UVCE, they can ONLY see events scoped for 'ALL'
@@ -637,6 +635,11 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
     const matchesLocation = selectedLocationType === 'All' || e.location_type === selectedLocationType;
     const matchesClub = !clubSearchQuery.trim() || e.club_category?.toLowerCase().trim().includes(clubSearchQuery.toLowerCase().trim());
     return matchesSearch && matchesLocation && matchesClub;
+  });
+
+  const upcomingFilteredEvents = filteredEvents.filter(event => {
+    if (!event.registration_deadline) return true;
+    return new Date() < new Date(event.registration_deadline);
   });
 
   console.log("Active User Registrations Stream:", myRegistrations);
@@ -1045,20 +1048,13 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                       </button>
                     </div>
 
-                    {filteredEvents.filter(event => {
-                      if (!event.registration_deadline) return true;
-                      return new Date() < new Date(event.registration_deadline);
-                    }).length === 0 ? (
+                    {upcomingFilteredEvents.length === 0 ? (
                       <div className="bg-white border border-slate-200/60 rounded-2xl p-12 text-center shadow-sm text-xs font-medium text-slate-400">
                         No new featured events available right now. Check back soon!
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredEvents
-                          .filter(event => {
-                            if (!event.registration_deadline) return true;
-                            return new Date() < new Date(event.registration_deadline);
-                          })
+                        {upcomingFilteredEvents
                           .slice(0, 3)
                           .map((event) => {
                             const isUserRegistered = Array.isArray(myRegistrations) && myRegistrations.some(reg => {
@@ -1121,19 +1117,19 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                       </div>
                     </div>
                     <span className="text-xs text-gray-400 font-semibold">
-                      Found {filteredEvents.length} open events
+                      Found {upcomingFilteredEvents.length} open events
                     </span>
                   </div>
 
                   {/* Grid */}
-                  {filteredEvents.length === 0 ? (
+                  {upcomingFilteredEvents.length === 0 ? (
                     <div className="bg-white border border-slate-200/60 rounded-2xl p-16 text-center shadow-sm">
                       <h4 className="font-semibold text-slate-700 text-sm">No events found</h4>
                       <p className="text-xs text-gray-400 mt-1">Try resetting your filters or typing another keywords.</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {filteredEvents.map((event) => {
+                      {upcomingFilteredEvents.map((event) => {
                         const isUserRegistered = Array.isArray(myRegistrations) && myRegistrations.some(reg => {
                           const registeredId = reg.event_id || reg.events?.id;
                           if (!registeredId || !event?.id) return false;
