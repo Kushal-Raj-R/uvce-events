@@ -312,6 +312,7 @@ export default function AuthScreen({ onAuthSuccess }) {
                         <option value="Computer Science Engineering">Computer Science & Engineering (CSE)</option>
                         <option value="Information Science Engineering">Information Science & Engineering (ISE)</option>       
                         <option value="Artificial Intelligence & Machine Learning">Artificial Intelligence & ML (AI&ML)</option>
+                        <option value="Artificial Intelligence & Data Science">Artificial Intelligence & Data Science (AIDS)</option>
                         <option value="Electronics & Communication Engineering">Electronics & Communication (ECE)</option>
                         <option value="Electrical & Electronics Engineering">Electrical & Electronics (EEE)</option>
                         <option value="Mechanical Engineering">Mechanical Engineering (ME)</option>
