@@ -84,6 +84,26 @@ export default function AuthScreen({ onAuthSuccess }) {
           setLoading(false);
           return;
         }
+
+        // Clean and normalize the roll number string input
+        const formattedRollNumber = rollNumber.trim().toUpperCase();
+
+        // Unique Roll Number Guardrail query
+        const { data: existingStudent, error: checkError } = await supabase
+          .from('profiles')
+          .select('roll_number')
+          .eq('roll_number', formattedRollNumber)
+          .maybeSingle();
+
+        if (checkError) {
+          console.error("Validation query error:", checkError.message);
+        }
+
+        if (existingStudent) {
+          setErrorMsg(`The Roll Number "${formattedRollNumber}" has already been registered.`);
+          setLoading(false);
+          return;
+        }
       }
 
       const finalCollegeName = institutionType === 'UVCE' ? 'UVCE' : customCollege.trim();
@@ -97,7 +117,7 @@ export default function AuthScreen({ onAuthSuccess }) {
             phone,
             role,
             ...(role === 'student'
-              ? { roll_number: rollNumber, branch, semester, username: username.toLowerCase().trim(), college_name: finalCollegeName }
+              ? { roll_number: rollNumber.trim().toUpperCase(), branch, semester, username: username.toLowerCase().trim(), college_name: finalCollegeName }
               : { branch }), // For organizers, branch represents their department
           },
         },
@@ -299,6 +319,11 @@ export default function AuthScreen({ onAuthSuccess }) {
                         onChange={(e) => setRollNumber(e.target.value)}
                         className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-sm"
                       />
+                      {errorMsg && errorMsg.includes('Roll Number') && (
+                        <div className="mt-2 p-3 bg-rose-50 border border-rose-100 text-rose-600 font-bold text-xs rounded-xl flex items-center gap-2 animate-shake">
+                          ⚠️ {errorMsg}
+                        </div>
+                      )}
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Branch</label>
