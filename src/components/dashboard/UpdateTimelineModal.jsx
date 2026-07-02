@@ -37,19 +37,26 @@ export default function UpdateTimelineModal({ event, onClose, onSuccess }) {
     setLoading(true);
     setErrorMsg('');
 
-    if (!eventStartDate) {
-      setErrorMsg('Event Start Date is required.');
+    const deadlineParsed = new Date(registrationDeadline);
+    const startDateParsed = new Date(eventStartDate);
+
+    // Guard rails: Check for invalid date formatting inputs
+    if (isNaN(deadlineParsed.getTime()) || isNaN(startDateParsed.getTime())) {
+      setErrorMsg("Please ensure your date and time formats are complete.");
       setLoading(false);
       return;
     }
 
+    // Map payload explicitly using .toISOString() to prevent timezone shifting
+    const updatePayload = {
+      registration_deadline: deadlineParsed.toISOString(),
+      event_start_date: startDateParsed.toISOString(),
+      duration_days: parseInt(durationDays, 10) || 1
+    };
+
     const { error } = await supabase
       .from('events')
-      .update({
-        registration_deadline: registrationDeadline ? new Date(registrationDeadline).toISOString() : null,
-        event_start_date: eventStartDate ? new Date(eventStartDate).toISOString() : null,
-        duration_days: parseInt(durationDays) || 1
-      })
+      .update(updatePayload)
       .eq('id', event.id);
 
     if (error) {
