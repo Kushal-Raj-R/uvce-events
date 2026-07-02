@@ -280,10 +280,12 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
     }
 
     // Fetch all active/open events respecting visibility scope
+    const currentTimestamp = new Date().toISOString();
     let eventsQuery = supabase
       .from('events')
       .select('*')
-      .eq('status', 'OPEN');
+      .eq('status', 'OPEN')
+      .gte('registration_deadline', currentTimestamp);
 
     if (studentCollege !== 'UVCE') {
       // If a student is NOT from UVCE, they can ONLY see events scoped for 'ALL'
@@ -293,7 +295,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
       eventsQuery = eventsQuery.in('event_scope', ['ALL', 'UVCE']);
     }
 
-    const { data: eventsData, error: eventsError } = await eventsQuery.order('event_start_date', { ascending: true });
+    const { data: eventsData, error: eventsError } = await eventsQuery.order('registration_deadline', { ascending: true });
 
     let loadedEvents = [];
     if (!eventsError && eventsData) {
@@ -1677,18 +1679,11 @@ function EventCard({ event, isRegistered, onRegister }) {
         </div>
 
         {/* DYNAMIC REGISTRATION ENFORCEMENT ACTION BUTTON */}
-        <div className="flex items-center justify-between w-full mt-4">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-            {event?.is_direct ? 'Direct Register' : 'Squad Entry'}
-          </span>
-
+        <div className="flex items-center justify-end w-full mt-4 gap-2">
           {isDeadlinePassed ? (
-            <button
-              disabled
-              className="h-9 px-4 bg-slate-100 text-slate-400 font-bold text-xs rounded-xl cursor-not-allowed select-none border border-slate-200"
-            >
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-400 font-bold text-[10px] rounded-xl uppercase tracking-wider select-none border border-slate-200">
               🔒 Registration Closed
-            </button>
+            </div>
           ) : isUserRegistered ? (
             <div className="h-9 px-4 bg-emerald-50 border border-emerald-100 text-emerald-700 font-bold text-xs rounded-xl flex items-center gap-1">
               ✓ Registered
@@ -1698,7 +1693,7 @@ function EventCard({ event, isRegistered, onRegister }) {
               onClick={handleOpenRegisterModal}
               className="h-9 px-4 bg-blue-600 text-white font-bold text-xs rounded-xl hover:bg-blue-700 active:scale-95 transition-all shadow-sm"
             >
-              Register Now →
+              Register Now
             </button>
           )}
         </div>
