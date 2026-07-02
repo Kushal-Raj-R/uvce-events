@@ -447,48 +447,8 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
                   </div>
                 )}
 
-                {/* STEP 1: EVENT DETAILS & PROFILE VERIFICATION */}
                 {currentStep === 1 && (
                   <div className="flex flex-col gap-6 animate-fadeIn">
-                    {/* DYNAMIC DOCUMENT & IMAGE PREVIEW BANNER CELL FOR STUDENTS */}
-                    {event?.documents && event.documents.length > 0 && (
-                      <div className="mb-6 flex flex-col gap-4">
-                        {event.documents.map((doc, idx) => {
-                          const isImage = doc.url?.match(/\.(jpeg|jpg|gif|png|webp)/i) || !doc.url?.endsWith('.pdf');
-                          
-                          return (
-                            <div key={doc.id || idx} className="w-full">
-                              {isImage ? (
-                                /* Automatic Inline Image Display */
-                                <div className="flex flex-col gap-1.5 border border-slate-100 bg-white p-3 rounded-2xl shadow-sm">
-                                  {doc.description && (
-                                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-1">
-                                      💡 Reference: {doc.description}
-                                    </span>
-                                  )}
-                                  <div className="w-full max-h-72 rounded-xl overflow-hidden bg-slate-50 border flex items-center justify-center">
-                                    <img 
-                                      src={doc.url} 
-                                      alt={doc.description || 'Event Attachment'} 
-                                      className="w-full max-h-72 object-contain"
-                                    />
-                                  </div>
-                                </div>
-                              ) : (
-                                /* Normal PDF Download Attachment Link */
-                                <div className="flex items-center justify-between p-3 bg-slate-50 border rounded-xl text-xs">
-                                  <span className="font-medium text-slate-600">📄 {doc.description || 'Reference Guide'}</span>
-                                  <a href={doc.url} target="_blank" rel="noreferrer" className="text-blue-600 font-bold hover:underline">
-                                    Download PDF
-                                  </a>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
                     {/* Event Description & Timing Details */}
                     <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-3">
                       <div>
@@ -543,6 +503,45 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
                         Need to update your details? Close this modal and edit your profile in the sidebar.
                       </p>
                     </div>
+
+                    {/* DYNAMIC DOCUMENT & IMAGE PREVIEW BANNER CELL FOR STUDENTS */}
+                    {event?.documents && event.documents.length > 0 && (
+                      <div className="mb-6 flex flex-col gap-4">
+                        {event.documents.map((doc, idx) => {
+                          const isImage = doc.url?.match(/\.(jpeg|jpg|gif|png|webp)/i) || !doc.url?.endsWith('.pdf');
+                          
+                          return (
+                            <div key={doc.id || idx} className="w-full">
+                              {isImage ? (
+                                /* Automatic Inline Image Display */
+                                <div className="flex flex-col gap-1.5 border border-slate-100 bg-white p-3 rounded-2xl shadow-sm">
+                                  {doc.description && (
+                                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-1">
+                                      💡 Reference: {doc.description}
+                                    </span>
+                                  )}
+                                  <div className="w-full max-h-72 rounded-xl overflow-hidden bg-slate-50 border flex items-center justify-center">
+                                    <img 
+                                      src={doc.url} 
+                                      alt={doc.description || 'Event Attachment'} 
+                                      className="w-full max-h-72 object-contain"
+                                    />
+                                  </div>
+                                </div>
+                              ) : (
+                                /* Normal PDF Download Attachment Link */
+                                <div className="flex items-center justify-between p-3 bg-slate-50 border rounded-xl text-xs">
+                                  <span className="font-medium text-slate-600">📄 {doc.description || 'Reference Guide'}</span>
+                                  <a href={doc.url} target="_blank" rel="noreferrer" className="text-blue-600 font-bold hover:underline">
+                                    Download PDF
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
 
