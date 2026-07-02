@@ -1057,7 +1057,20 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                       </div>
                       <div>
                         <span className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Available Workshops</span>
-                        <span className="text-2xl font-bold text-slate-800">{events.length}</span>
+                        <span className="text-2xl font-bold text-slate-800">
+                          {events.filter(event => {
+                            if (!event.registration_deadline) return true;
+                            try {
+                              let rawString = String(event.registration_deadline).replace(/\bat\b/i, '').trim();
+                              if (!rawString.includes('Z') && !rawString.includes('+')) {
+                                rawString = rawString.replace(' ', 'T');
+                              }
+                              return new Date() < new Date(rawString);
+                            } catch {
+                              return true;
+                            }
+                          }).length}
+                        </span>
                       </div>
                     </div>
 
