@@ -54,6 +54,11 @@ export default function UpdateTimelineModal({ event, onClose, onSuccess }) {
       duration_days: parseInt(durationDays, 10) || 1
     };
 
+    // Reset status to OPEN if the extended deadline is in the future
+    if (deadlineParsed > new Date()) {
+      updatePayload.status = 'OPEN';
+    }
+
     const { error } = await supabase
       .from('events')
       .update(updatePayload)

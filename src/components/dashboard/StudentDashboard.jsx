@@ -683,7 +683,9 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
 
       // 3. Simple, straightforward local clock comparison:
       // If current local time is less than the deadline, the event stays visible!
-      return currentDate < deadlineDate;
+      const isVisible = currentDate < deadlineDate;
+      console.log(`[Event Filter] Title: "${event.title}", Deadline: "${event.registration_deadline}", parsedDeadline: "${deadlineDate.toISOString()}", currentDate: "${currentDate.toISOString()}", isVisible: ${isVisible}`);
+      return isVisible;
     } catch {
       return true; // Safe fallback block to guarantee visibility on errors
     }
