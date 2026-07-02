@@ -1678,6 +1678,20 @@ function EventCard({ event, isRegistered, onRegister }) {
   const isUserRegistered = isRegistered;
   const handleOpenRegisterModal = () => onRegister();
 
+  const displayDeadline = (deadlineString) => {
+    if (!deadlineString) return 'N/A';
+    const dateObj = new Date(deadlineString);
+    return dateObj.toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
   const currentDateTime = new Date();
   let isDeadlinePassed = false;
   if (event?.registration_deadline) {
@@ -1734,6 +1748,11 @@ function EventCard({ event, isRegistered, onRegister }) {
           <p className="text-xs text-gray-400 leading-relaxed line-clamp-2">
             {event.description || 'No description provided.'}
           </p>
+          {event.registration_deadline && (
+            <p className="text-[10px] text-slate-400 font-medium mt-1">
+              Ends: {displayDeadline(event.registration_deadline)}
+            </p>
+          )}
         </div>
 
         {/* DYNAMIC REGISTRATION ENFORCEMENT ACTION BUTTON */}
