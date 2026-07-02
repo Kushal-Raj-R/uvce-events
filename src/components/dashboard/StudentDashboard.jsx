@@ -1547,10 +1547,9 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                       <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Full Name</label>
                       <input
                         type="text"
-                        required
+                        disabled
                         value={profile.full_name}
-                        onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs"
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/80 text-slate-400 font-medium cursor-not-allowed outline-none select-none text-xs"
                       />
                     </div>
 
@@ -1598,10 +1597,9 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                         <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Roll Number</label>
                         <input
                           type="text"
-                          required
+                          disabled
                           value={profile.roll_number}
-                          onChange={(e) => setProfile({ ...profile, roll_number: e.target.value })}
-                          className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs"
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/80 text-slate-400 font-mono cursor-not-allowed outline-none select-none text-xs"
                         />
                       </div>
 
@@ -1610,10 +1608,9 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                         <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Branch</label>
                         <input
                           type="text"
-                          required
+                          disabled
                           value={profile.branch}
-                          onChange={(e) => setProfile({ ...profile, branch: e.target.value })}
-                          className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs"
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/80 text-slate-400 font-medium cursor-not-allowed outline-none select-none text-xs"
                         />
                       </div>
 
@@ -1621,19 +1618,11 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                       <div>
                         <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Semester</label>
                         <select
-                          required
+                          disabled
                           value={profile.semester}
-                          onChange={(e) => setProfile({ ...profile, semester: e.target.value })}
-                          className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-xs bg-white"
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/80 text-slate-400 font-medium cursor-not-allowed appearance-none outline-none select-none text-xs"
                         >
-                          <option value="1st Semester">1st Sem</option>
-                          <option value="2nd Semester">2nd Sem</option>
-                          <option value="3rd Semester">3rd Sem</option>
-                          <option value="4th Semester">4th Sem</option>
-                          <option value="5th Semester">5th Sem</option>
-                          <option value="6th Semester">6th Sem</option>
-                          <option value="7th Semester">7th Sem</option>
-                          <option value="8th Semester">8th Sem</option>
+                          <option>{profile.semester || "Select"}</option>
                         </select>
                       </div>
                     </div>
