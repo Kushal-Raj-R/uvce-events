@@ -235,3 +235,6 @@ DROP POLICY IF EXISTS "Connections are viewable by participants" ON public.conne
 CREATE POLICY "Connections are viewable by participants" 
 ON public.connections FOR SELECT 
 USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
+
+-- Enable Realtime Replication for Events
+ALTER TABLE public.events REPLICATE FULL;

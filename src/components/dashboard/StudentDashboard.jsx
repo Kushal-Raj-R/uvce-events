@@ -152,6 +152,29 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
     fetchProfile();
     fetchIncomingFriendInvites();
     fetchConnectedFriends();
+
+    // 2. 🚀 INJECT LIVE STREAM LISTENER TO SEAMLESSLY CATCH DEADLINE EXTENSIONS
+    const eventsSubscription = supabase
+      .channel('live-events-feed-channel')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to inserts, deletes, and updates dynamically
+          schema: 'public',
+          table: 'events'
+        },
+        (payload) => {
+          console.log('Live Table Change Detected:', payload);
+          // Trigger a clean re-fetch from the database
+          fetchDashboardData();
+        }
+      )
+      .subscribe();
+
+    // 3. Clean up the socket channel connection when the component unmounts
+    return () => {
+      supabase.removeChannel(eventsSubscription);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, refreshCount]);
 
