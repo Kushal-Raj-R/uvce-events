@@ -1017,13 +1017,16 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                       </div>
                     </div>
 
+                    {/* 🚀 NEW UPGRADED CARD 3: STUDENT USERNAME DISPLAY PROFILE CARD */}
                     <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm flex items-center gap-4">
-                      <div className="p-3 bg-amber-50 text-amber-500 rounded-xl">
-                        <GraduationCap className="w-6 h-6" />
+                      <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center text-xl">
+                        👤
                       </div>
                       <div>
-                        <span className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Student Rank / Sem</span>
-                        <span className="text-sm font-bold text-slate-800">{profile.semester || '6th Sem'} CS</span>
+                        <span className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Student Profile</span>
+                        <span className="text-sm font-bold text-slate-800 font-mono block mt-0.5">
+                          @{profile?.username || 'username'}
+                        </span>
                       </div>
                     </div>
                   </div>
