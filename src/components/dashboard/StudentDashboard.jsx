@@ -662,7 +662,27 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
 
   const upcomingFilteredEvents = filteredEvents.filter(event => {
     if (!event.registration_deadline) return true;
-    return new Date() < new Date(event.registration_deadline);
+
+    try {
+      // 1. Sanitize common custom display text formats (e.g., "7/9/2026 at 12:23 AM" -> "7/9/2026 12:23 AM")
+      const sanitizedDateString = String(event.registration_deadline)
+        .replace(/\bat\b/i, '') // Strips out the word "at" if it exists in the string
+        .trim();
+
+      const deadlineDate = new Date(sanitizedDateString);
+
+      // 2. Fallback check: If the date parsing failed, don't break the layout—default to showing the event
+      if (isNaN(deadlineDate.getTime())) {
+        console.warn("Could not parse date string format cleanly:", event.registration_deadline);
+        return true; 
+      }
+
+      // 3. Live Clock evaluation: returns true if the current time hasn't passed the deadline yet
+      return new Date() < deadlineDate;
+    } catch {
+      // Safe fallback option to prevent components from rendering invisibly
+      return true;
+    }
   });
 
   console.log("Active User Registrations Stream:", myRegistrations);
@@ -1659,8 +1679,18 @@ function EventCard({ event, isRegistered, onRegister }) {
   const handleOpenRegisterModal = () => onRegister();
 
   const currentDateTime = new Date();
-  const deadlineDateTime = new Date(event?.registration_deadline);
-  const isDeadlinePassed = event?.registration_deadline ? currentDateTime > deadlineDateTime : false;
+  let isDeadlinePassed = false;
+  if (event?.registration_deadline) {
+    try {
+      const sanitized = String(event.registration_deadline).replace(/\bat\b/i, '').trim();
+      const deadlineDate = new Date(sanitized);
+      if (!isNaN(deadlineDate.getTime())) {
+        isDeadlinePassed = currentDateTime > deadlineDate;
+      }
+    } catch {
+      isDeadlinePassed = false;
+    }
+  }
 
   return (
     <div className="bg-white rounded-3xl overflow-hidden border border-slate-200/60 shadow-sm flex flex-col justify-between hover:shadow-md hover:border-slate-300/80 transition-all duration-300 group">
