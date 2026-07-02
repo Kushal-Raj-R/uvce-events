@@ -278,7 +278,6 @@ export default function AuthScreen({ onAuthSuccess }) {
                     <input
                       type="text"
                       required
-                      placeholder="e.g. kushal_raj_123"
                       pattern="^[a-z0-9_]+$"
                       title="Username can only contain lowercase letters, numbers, and underscores"
                       value={username}
@@ -303,13 +302,21 @@ export default function AuthScreen({ onAuthSuccess }) {
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Branch</label>
-                      <input
-                        type="text"
+                      <select
                         required
                         value={branch}
                         onChange={(e) => setBranch(e.target.value)}
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-sm"
-                      />
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-sm bg-white cursor-pointer"
+                      >
+                        <option value="">Select Branch</option>
+                        <option value="Computer Science Engineering">Computer Science & Engineering (CSE)</option>
+                        <option value="Information Science Engineering">Information Science & Engineering (ISE)</option>       
+                        <option value="Artificial Intelligence & Machine Learning">Artificial Intelligence & ML (AI&ML)</option>
+                        <option value="Electronics & Communication Engineering">Electronics & Communication (ECE)</option>
+                        <option value="Electrical & Electronics Engineering">Electrical & Electronics (EEE)</option>
+                        <option value="Mechanical Engineering">Mechanical Engineering (ME)</option>
+                        <option value="Civil Engineering">Civil Engineering (CE)</option>
+                      </select>
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Semester</label>
