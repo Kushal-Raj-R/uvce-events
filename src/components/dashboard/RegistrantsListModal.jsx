@@ -162,6 +162,9 @@ export default function RegistrantsListModal({ event, onClose }) {
     printWindow.document.close();
   };
 
+  const hasAnyUploadedSolutions = organizedRegistrations.some(reg => reg.solution_url);
+  const isSoloEvent = event?.participation_type === 'Solo';
+
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl max-w-4xl w-full shadow-2xl overflow-hidden animate-fade-in flex flex-col max-h-[85vh]">
@@ -240,7 +243,7 @@ export default function RegistrantsListModal({ event, onClose }) {
                     {event.custom_fields && event.custom_fields.map(field => (
                       <th key={field.id} className="py-3 px-4 min-w-[150px] max-w-xs whitespace-normal break-words">{field.label}</th>
                     ))}
-                    {event?.participation_type === 'Solo' && (
+                    {isSoloEvent && hasAnyUploadedSolutions && (
                       <th className="py-3 px-4 text-slate-500 font-bold uppercase tracking-wider min-w-[120px] whitespace-normal break-words">Solution Link</th>
                     )}
                     <th className="py-3 px-4 text-right min-w-[120px] whitespace-normal break-words">Registration Date</th>
@@ -291,7 +294,7 @@ export default function RegistrantsListModal({ event, onClose }) {
                           );
                         })}
 
-                        {event?.participation_type === 'Solo' && (
+                        {isSoloEvent && hasAnyUploadedSolutions && (
                           <td className="py-3.5 px-4 min-w-[120px] whitespace-normal break-words">
                             {reg.solution_url ? (
                               <a 
@@ -303,7 +306,7 @@ export default function RegistrantsListModal({ event, onClose }) {
                                 <span>📄</span> View Solution
                               </a>
                             ) : (
-                              <span className="text-slate-400 font-normal italic">Pending Upload</span>
+                              <span className="text-slate-400 font-normal italic">No Upload</span>
                             )}
                           </td>
                         )}
