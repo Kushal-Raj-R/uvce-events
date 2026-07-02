@@ -1045,29 +1045,38 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                       </button>
                     </div>
 
-                    {filteredEvents.length === 0 ? (
-                      <div className="bg-white border border-slate-200/60 rounded-2xl p-12 text-center shadow-sm">
-                        <span className="text-gray-400 text-sm">No events found matching search query.</span>
+                    {filteredEvents.filter(event => {
+                      if (!event.registration_deadline) return true;
+                      return new Date() < new Date(event.registration_deadline);
+                    }).length === 0 ? (
+                      <div className="bg-white border border-slate-200/60 rounded-2xl p-12 text-center shadow-sm text-xs font-medium text-slate-400">
+                        No new featured events available right now. Check back soon!
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredEvents.slice(0, 3).map((event) => {
-                          const isUserRegistered = Array.isArray(myRegistrations) && myRegistrations.some(reg => {
-                            const registeredId = reg.event_id || reg.events?.id;
-                            if (!registeredId || !event?.id) return false;
+                        {filteredEvents
+                          .filter(event => {
+                            if (!event.registration_deadline) return true;
+                            return new Date() < new Date(event.registration_deadline);
+                          })
+                          .slice(0, 3)
+                          .map((event) => {
+                            const isUserRegistered = Array.isArray(myRegistrations) && myRegistrations.some(reg => {
+                              const registeredId = reg.event_id || reg.events?.id;
+                              if (!registeredId || !event?.id) return false;
 
-                            // Convert to lower-case trimmed strings to prevent raw text vs UUID comparison mismatches
-                            return String(registeredId).trim().toLowerCase() === String(event.id).trim().toLowerCase();
-                          });
-                          return (
-                            <EventCard
-                              key={event.id}
-                              event={event}
-                              isRegistered={isUserRegistered}
-                              onRegister={() => setSelectedEvent(event)}
-                            />
-                          );
-                        })}
+                              // Convert to lower-case trimmed strings to prevent raw text vs UUID comparison mismatches
+                              return String(registeredId).trim().toLowerCase() === String(event.id).trim().toLowerCase();
+                            });
+                            return (
+                              <EventCard
+                                key={event.id}
+                                event={event}
+                                isRegistered={isUserRegistered}
+                                onRegister={() => setSelectedEvent(event)}
+                              />
+                            );
+                          })}
                       </div>
                     )}
                   </div>
