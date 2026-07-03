@@ -1143,34 +1143,40 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                       </button>
                     </div>
 
-                    {upcomingFilteredEvents.length === 0 ? (
-                      <div className="bg-white border border-slate-200/60 rounded-2xl p-12 text-center shadow-sm text-xs font-medium text-slate-400">
-                        No new featured events available right now. Check back soon!
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {upcomingFilteredEvents
-                          .slice(0, 3)
-                          .map((event) => {
-                            const isUserRegistered = Array.isArray(myRegistrations) && myRegistrations.some(reg => {
-                              const registeredId = reg.event_id || reg.events?.id;
-                              if (!registeredId || !event?.id) return false;
+                    {(() => {
+                      const featuredEvents = upcomingFilteredEvents.filter(event => {
+                        const isUserRegistered = Array.isArray(myRegistrations) && myRegistrations.some(reg => {
+                          const registeredId = reg.event_id || reg.events?.id;
+                          if (!registeredId || !event?.id) return false;
+                          return String(registeredId).trim().toLowerCase() === String(event.id).trim().toLowerCase();
+                        });
+                        return !isUserRegistered;
+                      });
 
-                              // Convert to lower-case trimmed strings to prevent raw text vs UUID comparison mismatches
-                              return String(registeredId).trim().toLowerCase() === String(event.id).trim().toLowerCase();
-                            });
-                            return (
+                      if (featuredEvents.length === 0) {
+                        return (
+                          <div className="bg-white border border-slate-200/60 rounded-2xl p-12 text-center shadow-sm text-xs font-medium text-slate-400">
+                            No new featured events available right now. Check back soon!
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {featuredEvents
+                            .slice(0, 3)
+                            .map((event) => (
                               <EventCard
                                 key={event.id}
                                 event={event}
                                 user={user}
-                                isRegistered={isUserRegistered}
+                                isRegistered={false}
                                 onRegister={() => setSelectedEvent(event)}
                               />
-                            );
-                          })}
-                      </div>
-                    )}
+                            ))}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               )}
