@@ -46,6 +46,28 @@ export default function RegistrantsListModal({ event, onClose }) {
 
   const isTeamEvent = event.participation_type === 'Team';
 
+  // 🚀 1. PRE-CALCULATE DYNAMIC REGISTERED COUNTS FOR SEMESTERS AND BRANCHES
+  const semesterCounts = useMemo(() => {
+    const counts = {};
+    registrations?.forEach(reg => {
+      const sem = reg.profiles?.semester;
+      if (sem) counts[sem] = (counts[sem] || 0) + 1;
+    });
+    return counts;
+  }, [registrations]);
+
+  const branchCounts = useMemo(() => {
+    const counts = {};
+    registrations?.forEach(reg => {
+      const br = reg.profiles?.branch;
+      if (br) counts[br] = (counts[br] || 0) + 1;
+    });
+    return counts;
+  }, [registrations]);
+
+  // Total active student registration count helper
+  const totalStudentsCount = registrations?.length || 0;
+
   // 🚀 THE PROCESSING PIPELINE: FILTERS FIRST, THEN SORTS THE RESULTS
   const processedRegistrations = useMemo(() => {
     if (!registrations) return [];
@@ -249,56 +271,74 @@ export default function RegistrantsListModal({ event, onClose }) {
           ) : (
             <>
               {/* ORGANIZER LIST MANAGEMENT CONTROL PANEL */}
-              <div className="mb-6 p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-wrap items-center justify-between gap-4">
+              <div className="mb-6 p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-wrap items-center justify-between gap-4 animate-fadeIn">
+                
                 <div className="flex flex-wrap items-center gap-4 text-xs font-bold text-slate-500">
                   
-                  {/* Dynamic Filter 1: Semester Options Selection */}
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[10px] uppercase tracking-wider text-slate-400">Filter By Semester</span>
-                    <select 
-                      value={filterSemester} 
-                      onChange={(e) => setFilterSemester(e.target.value)}
-                      className="h-9 px-3 bg-white border border-slate-200 rounded-xl outline-none font-medium text-slate-700 cursor-pointer focus:border-blue-500"
-                    >
-                      <option value="ALL">All Semesters</option>
-                      <option value="1st Semester">1st Semester</option>
-                      <option value="2nd Semester">2nd Semester</option>
-                      <option value="3rd Semester">3rd Semester</option>
-                      <option value="4th Semester">4th Semester</option>
-                      <option value="5th Semester">5th Semester</option>
-                      <option value="6th Semester">6th Semester</option>
-                      <option value="7th Semester">7th Semester</option>
-                      <option value="8th Semester">8th Semester</option>
-                    </select>
-                  </div>
+                  {/* 🚀 CONDITION 1: Display ONLY when sorting by Academic Semester */}
+                  {sortBy === 'semester' && (
+                    <div className="flex flex-col gap-1 transition-all duration-200 animate-slideDown">
+                      <span className="text-[10px] uppercase tracking-wider text-slate-400">Filter By Semester</span>
+                      <select 
+                        value={filterSemester} 
+                        onChange={(e) => setFilterSemester(e.target.value)}
+                        className="h-9 px-3 bg-white border border-slate-200 rounded-xl outline-none font-medium text-slate-700 cursor-pointer focus:border-blue-500"
+                      >
+                        <option value="ALL">All Semesters ({totalStudentsCount})</option>
+                        {['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'].map(num => {
+                          const semName = `${num} Semester`;
+                          return (
+                            <option key={semName} value={semName}>
+                              {semName} ({semesterCounts[semName] || 0})
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+                  )}
 
-                  {/* Dynamic Filter 2: Branch Options Selection */}
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[10px] uppercase tracking-wider text-slate-400">Filter By Branch</span>
-                    <select 
-                      value={filterBranch} 
-                      onChange={(e) => setFilterBranch(e.target.value)}
-                      className="h-9 px-3 bg-white border border-slate-200 rounded-xl outline-none font-medium text-slate-700 cursor-pointer focus:border-blue-500"
-                    >
-                      <option value="ALL">All Branches</option>
-                      <option value="Computer Science Engineering">CSE</option>
-                      <option value="Information Science Engineering">ISE</option>
-                      <option value="Artificial Intelligence & Machine Learning">AI&ML</option>
-                      <option value="Artificial Intelligence & Data Science">AI&DS (AIDS)</option>
-                      <option value="Electronics & Communication Engineering">ECE</option>
-                      <option value="Electrical & Electronics Engineering">EEE</option>
-                      <option value="Mechanical Engineering">ME</option>
-                      <option value="Civil Engineering">CE</option>
-                    </select>
-                  </div>
+                  {/* 🚀 CONDITION 2: Display ONLY when sorting by Engineering Branch */}
+                  {sortBy === 'branch' && (
+                    <div className="flex flex-col gap-1 transition-all duration-200 animate-slideDown">
+                      <span className="text-[10px] uppercase tracking-wider text-slate-400">Filter By Branch</span>
+                      <select 
+                        value={filterBranch} 
+                        onChange={(e) => setFilterBranch(e.target.value)}
+                        className="h-9 px-3 bg-white border border-slate-200 rounded-xl outline-none font-medium text-slate-700 cursor-pointer focus:border-blue-500"
+                      >
+                        <option value="ALL">All Branches ({totalStudentsCount})</option>
+                        {[
+                          { id: "Computer Science Engineering", label: "CSE" },
+                          { id: "Information Science Engineering", label: "ISE" },
+                          { id: "Artificial Intelligence & Machine Learning", label: "AI&ML" },
+                          { id: "Artificial Intelligence & Data Science", label: "AI&DS (AIDS)" },
+                          { id: "Electronics & Communication Engineering", label: "ECE" },
+                          { id: "Electrical & Electronics Engineering", label: "EEE" },
+                          { id: "Mechanical Engineering", label: "ME" },
+                          { id: "Civil Engineering", label: "CE" }
+                        ].map(br => (
+                          <option key={br.id} value={br.id}>
+                            {br.label} ({branchCounts[br.id] || 0})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  
                 </div>
 
-                {/* Master Organizer Sort Field Selector */}
+                {/* Master Organizer Sort Selector */}
                 <div className="flex flex-col gap-1 text-xs font-bold text-slate-500">
                   <span className="text-[10px] uppercase tracking-wider text-slate-400">Sort Roster By</span>
                   <select 
                     value={sortBy} 
-                    onChange={(e) => setSortBy(e.target.value)}
+                    onChange={(e) => {
+                      const nextSort = e.target.value;
+                      setSortBy(nextSort);
+                      // Reset complementary filter targets if they turn invisible to keep calculations clean
+                      if (nextSort !== 'semester') setFilterSemester('ALL');
+                      if (nextSort !== 'branch') setFilterBranch('ALL');
+                    }}
                     className="h-9 px-3 bg-white border border-slate-200 rounded-xl outline-none font-bold text-blue-600 cursor-pointer focus:border-blue-500 shadow-xs"
                   >
                     <option value="name">Student Full Name</option>
@@ -307,6 +347,7 @@ export default function RegistrantsListModal({ event, onClose }) {
                     <option value="branch">Engineering Branch</option>
                   </select>
                 </div>
+                
               </div>
 
               <div className="w-full overflow-x-auto border border-slate-100 rounded-xl shadow-sm">
