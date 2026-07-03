@@ -20,7 +20,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [success, setSuccess] = useState(false);
-  const [friendsList, setFriendsList] = useState([]);
+  const [squad, setSquad] = useState([]);
   const [selectedTeammates, setSelectedTeammates] = useState(() => {
     const draftStr = event?.id ? sessionStorage.getItem(`eventRegistrationDraft:${event.id}`) : null;
     if (draftStr) {
@@ -131,42 +131,37 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
   }, [user]);
 
   useEffect(() => {
-    async function fetchFriendsList() {
-      if (!user?.id) return;
-      const { data, error } = await supabase
-        .from('connections')
-        .select(`
-          id,
-          sender_id,
-          receiver_id,
-          sender_profile:profiles!sender_id(id, full_name, roll_number, branch),
-          receiver_profile:profiles!receiver_id(id, full_name, roll_number, branch)
-        `)
-        .eq('status', 'ACCEPTED')
-        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`);
+    const fetchSquadMembers = async () => {
+      if (event?.participation_type !== 'Team' || !user?.id) return;
 
-      if (error) {
-        console.error("Error fetching friends:", error.message);
-        return;
-      }
+      try {
+        const { data, error } = await supabase
+          .from('connections')
+          .select(`
+            id,
+            sender_id,
+            receiver_id,
+            sender_profile:profiles!sender_id(id, username, full_name),
+            receiver_profile:profiles!receiver_id(id, username, full_name)
+          `)
+          .eq('status', 'ACCEPTED')
+          .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`);
 
-      if (data) {
-        const friends = data.map(conn => {
-          // Robust check for string ID vs object mapping (e.g. in mock mode)
+        if (error) throw error;
+
+        // Map profiles out to determine who the friend is relative to the current user
+        const friendsListMapped = (data || []).map(conn => {
           const connSenderId = (typeof conn.sender_id === 'object' && conn.sender_id !== null) ? conn.sender_id.id : conn.sender_id;
-          if (connSenderId === user.id) {
-            return conn.receiver_profile;
-          } else {
-            return conn.sender_profile;
-          }
+          return connSenderId === user.id ? conn.receiver_profile : conn.sender_profile;
         }).filter(Boolean);
-        setFriendsList(friends);
-      }
-    }
 
-    if (event?.participation_type === 'Team') {
-      fetchFriendsList();
-    }
+        setSquad(friendsListMapped);
+      } catch (err) {
+        console.error("Error loading teammates:", err.message);
+      }
+    };
+
+    fetchSquadMembers();
   }, [event, user]);
 
   const handleCustomFieldChange = (fieldId, value) => {
@@ -305,26 +300,38 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
       registrationsToInsert.push({
         event_id: event.id,
         student_id: user.id,
+        team_name: teamName.trim(),
+        team_members: selectedTeammates,
+        is_captain: true,
         custom_answers: {
           ...updatedAnswers,
           _team_name: teamName,
-          _teammates: selectedTeammates.map(t => typeof t === 'object' ? t.full_name : t)
+          _teammates: selectedTeammates.map(tId => {
+            const friend = squad.find(f => f.id === tId);
+            return friend ? friend.full_name : tId;
+          })
         }
       });
 
       // Teammate rows
-      selectedTeammates.forEach(teammate => {
+      selectedTeammates.forEach(teammateId => {
         registrationsToInsert.push({
           event_id: event.id,
-          student_id: teammate.id,
+          student_id: teammateId,
+          team_name: teamName.trim(),
+          team_members: selectedTeammates,
+          is_captain: false,
           custom_answers: {
             ...updatedAnswers,
             _team_name: teamName,
             _teammates: [
-              profile.full_name,
+              profile?.full_name || 'Captain',
               ...selectedTeammates
-                .filter(t => t.id !== teammate.id)
-                .map(t => typeof t === 'object' ? t.full_name : t)
+                .filter(id => id !== teammateId)
+                .map(id => {
+                  const friend = squad.find(f => f.id === id);
+                  return friend ? friend.full_name : id;
+                })
             ]
           }
         });
@@ -363,7 +370,10 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
 
       // Catch the unique constraint violation thrown by the database
       if (err.message?.includes('registrations_event_id_student_id_key') || err.code === '23505') {
-        const duplicateMemberName = selectedTeammates?.map(t => typeof t === 'object' ? t.full_name : t).join(', ') || "One of your selected friends";
+        const duplicateMemberName = selectedTeammates?.map(tId => {
+          const friend = squad.find(f => f.id === tId);
+          return friend ? friend.full_name : tId;
+        }).join(', ') || "One of your selected friends";
         setErrorMsg(`❌ Cannot register: ${duplicateMemberName} is already registered for this event in another team!`);
         setLoading(false);
         return;
@@ -504,6 +514,74 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
                       </p>
                     </div>
 
+                    {/* 🚀 SMART CONDITION: RENDER TEAM SETTINGS ONLY IF PARTICIPATION TYPE IS TEAM */}
+                    {event?.participation_type === 'Team' && (
+                      <div className="flex flex-col gap-4 p-5 border border-indigo-100 bg-indigo-50/20 rounded-2xl animate-fadeIn mb-4">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Team Setup Required</span>
+                          <h3 className="text-xs font-bold text-slate-700">Enter your squad details to complete registration</h3>
+                        </div>
+
+                        {/* 1. TEAM NAME INPUT FIELD */}
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Team Name</label>
+                          <input
+                            type="text"
+                            value={teamName}
+                            onChange={(e) => setTeamName(e.target.value)}
+                            placeholder="Enter your unique team name"
+                            className="h-11 w-full px-4 bg-white border border-slate-200 focus:border-indigo-500 text-xs font-medium text-slate-700 rounded-xl transition-all outline-none"
+                          />
+                        </div>
+
+                        {/* 2. FRIENDS / SQUAD SELECTION GRID LIST */}
+                        <div className="flex flex-col gap-1.5 mt-1">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                            Select Teammates ({selectedTeammates.length} selected)
+                          </label>
+                          
+                          {squad.length > 0 ? (
+                            <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto pr-1">
+                              {squad.map((friend) => {
+                                const isChecked = selectedTeammates.includes(friend.id);
+                                return (
+                                  <label 
+                                    key={friend.id}
+                                    className={`p-3 border rounded-xl flex items-center justify-between cursor-pointer text-xs font-medium transition-all ${
+                                      isChecked 
+                                        ? 'bg-indigo-50 border-indigo-200 text-indigo-900 font-bold' 
+                                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50/70'
+                                    }`}
+                                  >
+                                    <div className="flex flex-col">
+                                      <span>{friend.full_name}</span>
+                                      <span className="text-[10px] text-slate-400 font-normal">@{friend.username}</span>
+                                    </div>
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={() => {
+                                        if (isChecked) {
+                                          setSelectedTeammates(selectedTeammates.filter(id => id !== friend.id));
+                                        } else {
+                                          setSelectedTeammates([...selectedTeammates, friend.id]);
+                                        }
+                                      }}
+                                      className="w-4 h-4 rounded-md border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                    />
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="p-4 text-center border border-dashed border-slate-200 bg-white rounded-xl text-[11px] text-slate-400">
+                              No squad members found. Go to your Friends dashboard to add teammates first!
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     {/* DYNAMIC DOCUMENT & IMAGE PREVIEW BANNER CELL FOR STUDENTS */}
                     {event?.documents && event.documents.length > 0 && (
                       <div className="mb-6 flex flex-col gap-4">
@@ -548,66 +626,6 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
                 {/* STEP 2: TEAM CONFIGURATION & SUBMISSION OPTION */}
                 {currentStep === 2 && (
                   <div className="flex flex-col gap-6 animate-fadeIn">
-                    {/* Team Formation UI */}
-                    {event.participation_type === 'Team' && (
-                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3">
-                        <div>
-                          <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Form Your Team</h4>
-                          <p className="text-[11px] text-gray-400 mt-1">Provide a team name and select teammates from your accepted connections.</p>
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="block text-[10px] font-semibold text-slate-500 uppercase">Team Name</label>
-                          <input 
-                            type="text" 
-                            value={teamName}
-                            onChange={(e) => setTeamName(e.target.value)}
-                            placeholder="Enter a creative name for your team..."
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 bg-white"
-                            required
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between text-[10px] text-slate-500 bg-white px-3 py-1.5 rounded-lg border border-slate-100 font-semibold">
-                          <span>Required Size: <strong className="text-slate-700">{event.min_team_size || 1} - {event.max_team_size || 3} members</strong></span>
-                          <span>Current Size: <strong className={1 + selectedTeammates.length < (event.min_team_size || 1) || 1 + selectedTeammates.length > (event.max_team_size || 3) ? "text-rose-500" : "text-emerald-500"}>{1 + selectedTeammates.length}</strong></span>
-                        </div>
-                        
-                        {friendsList.length === 0 ? (
-                          <div className="text-xs text-gray-400 italic bg-white p-3 rounded-lg border border-slate-100 text-center">
-                            No accepted friend connections found. Add connections in your student hub to form teams.
-                          </div>
-                        ) : (
-                          <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                            {friendsList.map((friend) => {
-                              if (!friend || !friend.id) return null;
-                              const isChecked = selectedTeammates.some(t => t.id === friend.id);
-                              return (
-                                <label key={friend.id} className="flex items-center gap-3 p-2 bg-white rounded-lg border border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors text-xs">
-                                  <input
-                                    type="checkbox"
-                                    checked={isChecked}
-                                    onChange={() => {
-                                      if (isChecked) {
-                                        setSelectedTeammates(selectedTeammates.filter(t => t.id !== friend.id));
-                                      } else {
-                                        setSelectedTeammates([...selectedTeammates, friend]);
-                                      }
-                                    }}
-                                    className="rounded border-slate-300 text-primary-500 focus:ring-primary-500/20 w-4 h-4"
-                                  />
-                                  <div>
-                                    <span className="font-semibold text-slate-700 block">{friend.full_name}</span>
-                                    <span className="text-[9px] text-gray-400 block">{friend.roll_number || 'No Roll #'} • {friend.branch || 'No Dept'}</span>
-                                  </div>
-                                </label>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
                     {/* Dynamic Custom Questions */}
                     {customFields.length > 0 && (
                       <div className="space-y-4">
