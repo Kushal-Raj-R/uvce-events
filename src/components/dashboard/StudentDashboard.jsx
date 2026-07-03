@@ -494,6 +494,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
       .from('profiles')
       .select('id, username, roll_number, full_name')
       .ilike('username', `%${query.trim()}%`)
+      .neq('id', user.id)
       .limit(5);
        
     setSearchResults(data || []);
@@ -1415,6 +1416,11 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                                     type="button"
                                     onClick={async () => {
                                       setSearchResults([]); // 1. Instantly close the dropdown
+                                      if (profile.id === user.id) {
+                                        alert("Operation blocked: You cannot add yourself to your own squad!");
+                                        setFriendCodeInput('');
+                                        return;
+                                      }
                                       try {
                                         // 2. Fire the connection request directly using the exact profile username we just clicked
                                         const { error: inviteError } = await supabase
