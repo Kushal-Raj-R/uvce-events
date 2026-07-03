@@ -1146,6 +1146,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                               <EventCard
                                 key={event.id}
                                 event={event}
+                                user={user}
                                 isRegistered={isUserRegistered}
                                 onRegister={() => setSelectedEvent(event)}
                               />
@@ -1219,6 +1220,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                           <EventCard
                             key={event.id}
                             event={event}
+                            user={user}
                             isRegistered={isUserRegistered}
                             onRegister={() => setSelectedEvent(event)}
                           />
@@ -1711,8 +1713,46 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
   );
 }
 
-function EventCard({ event, isRegistered, onRegister }) {
-  const isUserRegistered = isRegistered;
+function EventCard({ event, user, isRegistered, onRegister }) {
+  const [hasRegistered, setHasRegistered] = useState(false);
+
+  useEffect(() => {
+    const checkUserRegistrationStatus = async () => {
+      if (!user?.id || !event?.id) return;
+
+      try {
+        // 🚀 THE MULTI-MATCH QUERY: Look for rows on this event where the student is the creator
+        // OR where they are part of the team_members array structure
+        const { data: userEntries, error } = await supabase
+          .from('registrations')
+          .select('id, student_id, team_members')
+          .eq('event_id', event.id);
+
+        if (error) throw error;
+
+        // Check if current user is either the creator OR a listed teammate inside any row
+        const isPartofEvent = (userEntries || []).some(reg => {
+          const isCreator = reg.student_id === user.id;
+          
+          // Handle array validation safely if teammates exist
+          const isTeammate = Array.isArray(reg.team_members) 
+            ? reg.team_members.includes(user.id)
+            : false;
+
+          return isCreator || isTeammate;
+        });
+
+        setHasRegistered(isPartofEvent);
+
+      } catch (err) {
+        console.error("Status check failed:", err.message);
+      }
+    };
+
+    checkUserRegistrationStatus();
+  }, [event?.id, user?.id]);
+
+  const isUserRegistered = isRegistered || hasRegistered;
   const handleOpenRegisterModal = () => onRegister();
 
   const displayDeadline = (deadlineString) => {
@@ -1811,15 +1851,22 @@ function EventCard({ event, isRegistered, onRegister }) {
               🔒 Registration Closed
             </div>
           ) : isUserRegistered ? (
-            <div className="h-9 px-4 bg-emerald-50 border border-emerald-100 text-emerald-700 font-bold text-xs rounded-xl flex items-center gap-1">
+            <button
+              disabled
+              className="h-9 px-5 bg-emerald-100 text-emerald-700 font-bold text-xs rounded-xl cursor-not-allowed select-none"
+            >
               ✓ Registered
-            </div>
+            </button>
           ) : (
-            <div
-              className="h-9 px-4 bg-blue-600 text-white font-bold text-xs rounded-xl flex items-center justify-center shadow-sm select-none"
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenRegisterModal();
+              }}
+              className="h-9 px-5 bg-blue-600 text-white font-bold text-xs rounded-xl hover:bg-blue-700 transition-colors shadow-sm"
             >
               Register Now
-            </div>
+            </button>
           )}
         </div>
       </div>
