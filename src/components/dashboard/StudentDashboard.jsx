@@ -129,7 +129,6 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
   const [searchResults, setSearchResults] = useState([]);
   const [inviteSuccess, setInviteSuccess] = useState('');
   const [inviteError, setInviteError] = useState('');
-  const [copiedCode, setCopiedCode] = useState(false);
 
   // Profile Edit State
   const [profile, setProfile] = useState({
@@ -482,13 +481,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
     }
   };
 
-  const handleCopyCode = () => {
-    if (profile?.friend_code) {
-      navigator.clipboard.writeText(profile.friend_code);
-      setCopiedCode(true);
-      setTimeout(() => setCopiedCode(false), 2000);
-    }
-  };
+
 
   const handleSearchStudents = async (query) => {
     setFriendCodeInput(query);
@@ -497,12 +490,11 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
       return;
     }
     
-    const isCode = /^[a-f0-9]{8}$/i.test(query.trim());
-    const queryTarget = supabase.from('profiles').select('id, username, roll_number, full_name');
-    
-    const { data } = isCode 
-      ? await queryTarget.eq('friend_code', query.trim().toLowerCase())
-      : await queryTarget.ilike('username', `%${query.trim()}%`).limit(5);
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, username, roll_number, full_name')
+      .ilike('username', `%${query.trim()}%`)
+      .limit(5);
        
     setSearchResults(data || []);
   };
@@ -514,32 +506,15 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
     let query = typeof targetIdOrCode === 'string' ? targetIdOrCode : friendCodeInput.trim();
     if (!query) return;
 
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(query);
-
     try {
-      let targetProfile = null;
-      let profileErr = null;
-
-      if (isUuid) {
-        const res = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', query)
-          .single();
-        targetProfile = res.data;
-        profileErr = res.error;
-      } else {
-        const isCode = /^[a-z0-9]{8}$/i.test(query);
-        const queryTarget = supabase.from('profiles').select('*');
-        const res = isCode 
-          ? await queryTarget.eq('friend_code', query.toLowerCase()).single()
-          : await queryTarget.eq('username', query.toLowerCase()).single();
-        targetProfile = res.data;
-        profileErr = res.error;
-      }
+      const { data: targetProfile, error: profileErr } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('username', query.toLowerCase())
+        .maybeSingle();
 
       if (profileErr || !targetProfile) {
-        setInviteError("No student profile found with this username or connection code.");
+        setInviteError("No student profile found with this username.");
         return;
       }
 
@@ -1417,7 +1392,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                             <div className="flex gap-2">
                               <input
                                 type="text"
-                                placeholder="Search username or 8-digit code..."
+                                placeholder="Search username..."
                                 value={friendCodeInput}
                                 onChange={(e) => handleSearchStudents(e.target.value)}
                                 className="flex-grow px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-mono tracking-wider"
@@ -1453,31 +1428,6 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                             )}
                           </div>
                         </div>
-
-                        {/* Share Code */}
-                        <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5">
-                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Your Shareable Connection Code</span>
-                          <div className="flex items-center gap-3 mt-2">
-                            <span className="font-mono bg-blue-50 text-blue-700 px-4 py-2 rounded-xl text-base font-bold tracking-widest border border-blue-100 shadow-inner">
-                              {profile?.friend_code || '------'}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={handleCopyCode}
-                              className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm active:scale-95 flex items-center gap-1.5"
-                            >
-                              {copiedCode ? (
-                                <>
-                                  <CheckIcon className="w-3.5 h-3.5 text-emerald-500" />
-                                  <span className="text-emerald-600">Copied!</span>
-                                </>
-                              ) : (
-                                <span>Copy Code</span>
-                              )}
-                            </button>
-                          </div>
-                          <p className="text-[10px] text-slate-400 mt-2">Share this code with other students so they can invite you to their squad.</p>
-                        </div>
                       </div>
 
                       {/* Right panel: My Squad */}
@@ -1489,7 +1439,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.109A11.386 11.386 0 0012 20.08a11.386 11.386 0 00-3-1.1v-.109m6 1.2a11.386 11.386 0 00-3-1.1m3 1.1v-.091a11.386 11.386 0 00-3-1.1v-.002M9 19.128v-.003c0-1.113.285-2.16.786-3.07M9 19.128v.109a11.386 11.386 0 01-3-1.1v-.109m0-5.714a6 6 0 011.636-3.97m0 0A5.992 5.992 0 0112 3a5.99 5.99 0 014.364 1.864m-8.728 0A5.99 5.99 0 005.066 9m13.868-4.136A5.99 5.99 0 0118.934 9" />
                             </svg>
                             <span className="text-xs font-medium">No squad members yet.</span>
-                            <span className="text-[10px] text-slate-400">Add friends using their codes to assemble your team.</span>
+                            <span className="text-[10px] text-slate-400">Add friends using their usernames to assemble your team.</span>
                           </div>
                         ) : (
                           <div className="max-h-64 overflow-y-auto space-y-2.5 pr-2">
