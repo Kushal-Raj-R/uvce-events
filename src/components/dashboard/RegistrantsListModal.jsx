@@ -1,11 +1,14 @@
 // src/components/dashboard/RegistrantsListModal.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../supabaseClient';
 
 export default function RegistrantsListModal({ event, onClose }) {
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
+  const [sortBy, setSortBy] = useState('name'); // Options: 'name', 'team', 'semester', 'branch'
+  const [filterSemester, setFilterSemester] = useState('ALL'); 
+  const [filterBranch, setFilterBranch] = useState('ALL');
 
   useEffect(() => {
     async function fetchRegistrants() {
@@ -43,18 +46,39 @@ export default function RegistrantsListModal({ event, onClose }) {
 
   const isTeamEvent = event.participation_type === 'Team';
 
-  // Compute sorted registrations dynamically based on type (Team Name vs. Student Name)
-  const organizedRegistrations = [...(registrations || [])].sort((a, b) => {
-    if (isTeamEvent) {
-      const teamA = (a.custom_answers?._team_name || '').toLowerCase();
-      const teamB = (b.custom_answers?._team_name || '').toLowerCase();
-      return teamA.localeCompare(teamB);
-    } else {
-      const nameA = (a.profiles?.full_name || '').toLowerCase();
-      const nameB = (b.profiles?.full_name || '').toLowerCase();
-      return nameA.localeCompare(nameB);
-    }
-  });
+  // 🚀 THE PROCESSING PIPELINE: FILTERS FIRST, THEN SORTS THE RESULTS
+  const processedRegistrations = useMemo(() => {
+    if (!registrations) return [];
+
+    return registrations
+      // --- STAGE 1: MULTI-LAYER FILTERING ---
+      .filter(reg => {
+        const matchSem = filterSemester === 'ALL' || reg.profiles?.semester === filterSemester;
+        const matchBranch = filterBranch === 'ALL' || reg.profiles?.branch === filterBranch;
+        return matchSem && matchBranch;
+      })
+      // --- STAGE 2: CONDITIONAL SORTING CORRECTION ---
+      .sort((a, b) => {
+        let valA = '';
+        let valB = '';
+
+        if (sortBy === 'name') {
+          valA = (a.profiles?.full_name || '').toLowerCase();
+          valB = (b.profiles?.full_name || '').toLowerCase();
+        } else if (sortBy === 'team') {
+          valA = (a.custom_answers?._team_name || '').toLowerCase();
+          valB = (b.custom_answers?._team_name || '').toLowerCase();
+        } else if (sortBy === 'semester') {
+          valA = (a.profiles?.semester || '').toLowerCase();
+          valB = (b.profiles?.semester || '').toLowerCase();
+        } else if (sortBy === 'branch') {
+          valA = (a.profiles?.branch || '').toLowerCase();
+          valB = (b.profiles?.branch || '').toLowerCase();
+        }
+
+        return valA.localeCompare(valB);
+      });
+  }, [registrations, sortBy, filterSemester, filterBranch]);
 
   // Get unique teams with their solution urls
   const uniqueTeams = [];
@@ -162,7 +186,7 @@ export default function RegistrantsListModal({ event, onClose }) {
     printWindow.document.close();
   };
 
-  const hasAnyUploadedSolutions = organizedRegistrations.some(reg => reg.solution_url);
+  const hasAnyUploadedSolutions = processedRegistrations.some(reg => reg.solution_url);
   const isSoloEvent = event?.participation_type === 'Solo';
 
   return (
@@ -224,6 +248,67 @@ export default function RegistrantsListModal({ event, onClose }) {
             </div>
           ) : (
             <>
+              {/* ORGANIZER LIST MANAGEMENT CONTROL PANEL */}
+              <div className="mb-6 p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-wrap items-center justify-between gap-4">
+                <div className="flex flex-wrap items-center gap-4 text-xs font-bold text-slate-500">
+                  
+                  {/* Dynamic Filter 1: Semester Options Selection */}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] uppercase tracking-wider text-slate-400">Filter By Semester</span>
+                    <select 
+                      value={filterSemester} 
+                      onChange={(e) => setFilterSemester(e.target.value)}
+                      className="h-9 px-3 bg-white border border-slate-200 rounded-xl outline-none font-medium text-slate-700 cursor-pointer focus:border-blue-500"
+                    >
+                      <option value="ALL">All Semesters</option>
+                      <option value="1st Semester">1st Semester</option>
+                      <option value="2nd Semester">2nd Semester</option>
+                      <option value="3rd Semester">3rd Semester</option>
+                      <option value="4th Semester">4th Semester</option>
+                      <option value="5th Semester">5th Semester</option>
+                      <option value="6th Semester">6th Semester</option>
+                      <option value="7th Semester">7th Semester</option>
+                      <option value="8th Semester">8th Semester</option>
+                    </select>
+                  </div>
+
+                  {/* Dynamic Filter 2: Branch Options Selection */}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] uppercase tracking-wider text-slate-400">Filter By Branch</span>
+                    <select 
+                      value={filterBranch} 
+                      onChange={(e) => setFilterBranch(e.target.value)}
+                      className="h-9 px-3 bg-white border border-slate-200 rounded-xl outline-none font-medium text-slate-700 cursor-pointer focus:border-blue-500"
+                    >
+                      <option value="ALL">All Branches</option>
+                      <option value="Computer Science Engineering">CSE</option>
+                      <option value="Information Science Engineering">ISE</option>
+                      <option value="Artificial Intelligence & Machine Learning">AI&ML</option>
+                      <option value="Artificial Intelligence & Data Science">AI&DS (AIDS)</option>
+                      <option value="Electronics & Communication Engineering">ECE</option>
+                      <option value="Electrical & Electronics Engineering">EEE</option>
+                      <option value="Mechanical Engineering">ME</option>
+                      <option value="Civil Engineering">CE</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Master Organizer Sort Field Selector */}
+                <div className="flex flex-col gap-1 text-xs font-bold text-slate-500">
+                  <span className="text-[10px] uppercase tracking-wider text-slate-400">Sort Roster By</span>
+                  <select 
+                    value={sortBy} 
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="h-9 px-3 bg-white border border-slate-200 rounded-xl outline-none font-bold text-blue-600 cursor-pointer focus:border-blue-500 shadow-xs"
+                  >
+                    <option value="name">Student Full Name</option>
+                    <option value="team">Team Name</option>
+                    <option value="semester">Academic Semester</option>
+                    <option value="branch">Engineering Branch</option>
+                  </select>
+                </div>
+              </div>
+
               <div className="w-full overflow-x-auto border border-slate-100 rounded-xl shadow-sm">
               <table className="min-w-full text-left border-collapse divide-y divide-slate-100">
                 <thead>
@@ -250,7 +335,7 @@ export default function RegistrantsListModal({ event, onClose }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-                  {organizedRegistrations.map((reg) => {
+                  {processedRegistrations.map((reg) => {
                     const student = reg.profiles || {};
                     const resolvedEmail = student.email || reg.student?.email || reg.profiles?.email_address || reg.student?.email_address || 'Pending sync';
                     return (
@@ -316,6 +401,13 @@ export default function RegistrantsListModal({ event, onClose }) {
                       </tr>
                     );
                   })}
+                  {processedRegistrations.length === 0 && (
+                    <tr>
+                      <td colSpan={15} className="p-8 text-center text-xs font-medium text-slate-400 bg-white">
+                        No active registrations match your current filters.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
