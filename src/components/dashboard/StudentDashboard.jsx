@@ -227,6 +227,21 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
           .select('*')
           .in('id', eventIds);
 
+        // Helper to group and deduplicate by event_id + team_name
+        const deduplicate = (list) => {
+          const grouped = {};
+          list.forEach(reg => {
+            const tName = reg.team_name || '';
+            const key = `${reg.event_id}_${tName}`;
+            if (!grouped[key]) {
+              grouped[key] = reg;
+            } else if (reg.is_captain && !grouped[key].is_captain) {
+              grouped[key] = reg;
+            }
+          });
+          return Object.values(grouped);
+        };
+
         if (!matError && eventMaterials) {
           // 3. Merge the materials smoothly into your existing registration state objects
           const mergedData = regs.map(reg => {
@@ -240,8 +255,9 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
             };
           });
 
-          setMyRegistrations(mergedData);
-          return mergedData;
+          const dedupedData = deduplicate(mergedData);
+          setMyRegistrations(dedupedData);
+          return dedupedData;
         }
       }
 
@@ -250,8 +266,9 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
         team_name: reg.team_name || reg.custom_answers?._team_name || null,
         events: null
       }));
-      setMyRegistrations(simpleMerged);
-      return simpleMerged;
+      const dedupedSimple = deduplicate(simpleMerged);
+      setMyRegistrations(dedupedSimple);
+      return dedupedSimple;
     } catch (err) {
       console.error("Safe data-merge operation failed:", err.message);
       return [];
