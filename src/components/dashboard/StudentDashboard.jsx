@@ -210,7 +210,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
       const { data: regs, error: regError } = await supabase
         .from('registrations')
         .select('id, event_id, team_name, is_captain, custom_answers, solution_url, created_at')
-        .eq('student_id', user.id);
+        .or(`student_id.eq.${user.id},team_members.cs.{${user.id}}`);
 
       if (regError) throw regError;
       if (!regs || regs.length === 0) {
