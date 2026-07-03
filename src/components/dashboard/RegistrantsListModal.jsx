@@ -341,12 +341,12 @@ export default function RegistrantsListModal({ event, onClose }) {
                     }}
                     className="h-9 px-3 bg-white border border-slate-200 rounded-xl outline-none font-bold text-blue-600 cursor-pointer focus:border-blue-500 shadow-xs"
                   >
-                    <option value="name">Student Full Name</option>
+                    <option value="name">Name</option>
                     {event?.participation_type === 'Team' && (
                       <option value="team">Team Name</option>
                     )}
-                    <option value="semester">Academic Semester</option>
-                    <option value="branch">Engineering Branch</option>
+                    <option value="semester">Semester</option>
+                    <option value="branch">Branch</option>
                   </select>
                 </div>
                 
