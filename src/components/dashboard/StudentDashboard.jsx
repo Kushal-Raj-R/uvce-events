@@ -129,6 +129,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
   const [searchResults, setSearchResults] = useState([]);
   const [inviteSuccess, setInviteSuccess] = useState('');
   const [inviteError, setInviteError] = useState('');
+  const [inviteErrorMsg, setInviteErrorMsg] = useState('');
 
   // Profile Edit State
   const [profile, setProfile] = useState({
@@ -485,6 +486,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
 
   const handleSearchStudents = async (query) => {
     setFriendCodeInput(query);
+    setInviteErrorMsg('');
     if (query.trim().length < 2) {
       setSearchResults([]);
       return;
@@ -1395,7 +1397,10 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                                 type="text"
                                 placeholder="Search username..."
                                 value={friendCodeInput}
-                                onChange={(e) => handleSearchStudents(e.target.value)}
+                                onChange={(e) => {
+                                  handleSearchStudents(e.target.value);
+                                  if (inviteErrorMsg) setInviteErrorMsg('');
+                                }}
                                 className="flex-grow px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-mono tracking-wider"
                               />
                               <button
@@ -1416,8 +1421,9 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                                     type="button"
                                     onClick={async () => {
                                       setSearchResults([]); // 1. Instantly close the dropdown
+                                      setInviteErrorMsg(''); // Clear out past errors on fresh click
                                       if (profile.id === user.id) {
-                                        alert("Operation blocked: You cannot add yourself to your own squad!");
+                                        setInviteErrorMsg("Operation blocked: You cannot add yourself to your own squad!");
                                         setFriendCodeInput('');
                                         return;
                                       }
@@ -1433,12 +1439,12 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
 
                                         if (inviteError) throw inviteError;
 
-                                        alert(`Connection request successfully sent to @${profile.username}!`);
                                         setFriendCodeInput(''); // Clear the input field completely
+                                        setInviteErrorMsg(''); // Clear out past errors on success
                                         fetchDashboardData(); // Refresh squad list matrix
                                       } catch (err) {
                                         console.error(err);
-                                        alert("Could not complete connection. They might already be in your squad!");
+                                        setInviteErrorMsg("Could not complete connection. They might already be in your squad!");
                                       }
                                     }}
                                     className="w-full p-3 flex items-center justify-between hover:bg-slate-50 text-left transition-colors text-xs font-medium text-slate-700"
@@ -1456,7 +1462,12 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                                 ))}
                               </div>
                             )}
-                          </div>
+                           </div>
+                          {inviteErrorMsg && (
+                            <div className="mt-3 p-3 bg-rose-50 border border-rose-100 text-rose-600 font-bold text-xs rounded-xl flex items-center gap-2 animate-fadeIn">
+                              ⚠️ {inviteErrorMsg}
+                            </div>
+                          )}
                         </div>
                       </div>
 
