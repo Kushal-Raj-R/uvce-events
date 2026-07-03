@@ -124,6 +124,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
   const [fieldType, setFieldType] = useState('text');
   const [fieldOptions, setFieldOptions] = useState('');
   const [fieldMaxLimit, setFieldMaxLimit] = useState(2);
+  const [mcqSelectType, setMcqSelectType] = useState('single');
 
   // Modal State
   const [selectedEventForModal, setSelectedEventForModal] = useState(null);
@@ -268,6 +269,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
       label: fieldLabel,
       type: fieldType,
       options: (fieldType === 'select' || fieldType === 'mcq') ? fieldOptions.split(',').map(o => o.trim()).filter(Boolean) : [],
+      select_type: fieldType === 'mcq' ? mcqSelectType : null,
       ...(fieldType === 'file' ? { max_size: fieldMaxLimit || 2 } : {})
     };
 
@@ -275,6 +277,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
     setFieldLabel('');
     setFieldOptions('');
     setFieldMaxLimit(2);
+    setMcqSelectType('single');
     setShowFieldBuilder(false);
   };
 
@@ -1165,17 +1168,60 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                               )}
 
                               {(fieldType === 'select' || fieldType === 'mcq') && (
-                                <div>
-                                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
-                                    {fieldType === 'mcq' ? 'MCQ Options (comma-separated)' : 'Select Options (comma-separated)'}
-                                  </label>
-                                  <input
-                                    type="text"
-                                    placeholder="e.g. S, M, L, XL"
-                                    value={fieldOptions}
-                                    onChange={(e) => setFieldOptions(e.target.value)}
-                                    className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white"
-                                  />
+                                <div className="space-y-4">
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
+                                      {fieldType === 'mcq' ? 'MCQ Options (comma-separated)' : 'Select Options (comma-separated)'}
+                                    </label>
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. S, M, L, XL"
+                                      value={fieldOptions}
+                                      onChange={(e) => setFieldOptions(e.target.value)}
+                                      className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white"
+                                    />
+                                  </div>
+
+                                  {fieldType === 'mcq' && (
+                                    <div className="flex flex-col gap-1.5">
+                                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Selection Rules</label>
+                                      <div className="flex gap-4">
+                                        {/* Single Choice Selection Node */}
+                                        <label className={`flex-1 p-3 border rounded-xl flex items-center gap-3 cursor-pointer transition-all ${
+                                          mcqSelectType === 'single' ? 'bg-blue-50/50 border-blue-200 text-blue-700 font-bold' : 'bg-white border-slate-200 text-slate-600'
+                                        }`}>
+                                          <input
+                                            type="radio"
+                                            name="mcq_rule"
+                                            checked={mcqSelectType === 'single'}
+                                            onChange={() => setMcqSelectType('single')}
+                                            className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                          />
+                                          <div className="flex flex-col text-left">
+                                            <span className="text-xs">Single Answer</span>
+                                            <span className="text-[9px] text-slate-400 font-normal">Students pick one option via radio buttons</span>
+                                          </div>
+                                        </label>
+
+                                        {/* Multiple Choice Selection Node */}
+                                        <label className={`flex-1 p-3 border rounded-xl flex items-center gap-3 cursor-pointer transition-all ${
+                                          mcqSelectType === 'multiple' ? 'bg-blue-50/50 border-blue-200 text-blue-700 font-bold' : 'bg-white border-slate-200 text-slate-600'
+                                        }`}>
+                                          <input
+                                            type="radio"
+                                            name="mcq_rule"
+                                            checked={mcqSelectType === 'multiple'}
+                                            onChange={() => setMcqSelectType('multiple')}
+                                            className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                          />
+                                          <div className="flex flex-col text-left">
+                                            <span className="text-xs">Multiple Answers</span>
+                                            <span className="text-[9px] text-slate-400 font-normal">Students pick multiple items via checkboxes</span>
+                                          </div>
+                                        </label>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               )}
 
