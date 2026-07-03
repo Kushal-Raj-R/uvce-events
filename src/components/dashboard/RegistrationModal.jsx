@@ -344,6 +344,28 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
       });
     }
 
+    // Pre-check for duplicate registrations for this specific event_id
+    try {
+      const allParticipantIds = [user.id, ...selectedTeammates];
+      
+      const { data: existingEntries, error: checkError } = await supabase
+        .from('registrations')
+        .select('student_id, profiles:student_id(full_name)')
+        .eq('event_id', event.id)
+        .in('student_id', allParticipantIds);
+
+      if (checkError) throw checkError;
+
+      if (existingEntries && existingEntries.length > 0) {
+        const duplicateNames = existingEntries.map(entry => entry.profiles?.full_name || 'A teammate').join(', ');
+        setErrorMsg(`❌ Cannot register: ${duplicateNames} is already registered for this event in another team!`);
+        setLoading(false);
+        return;
+      }
+    } catch (checkErr) {
+      console.error("Pre-registration validation check failed:", checkErr);
+    }
+
     try {
       const { error } = await supabase
         .from('registrations')
