@@ -1413,15 +1413,39 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                                   <button
                                     key={profile.id}
                                     type="button"
-                                    onClick={() => {
-                                      handleSendInvite(profile.id);
+                                    onClick={async () => {
+                                      setSearchResults([]); // 1. Instantly close the dropdown
+                                      try {
+                                        // 2. Fire the connection request directly using the exact profile username we just clicked
+                                        const { error: inviteError } = await supabase
+                                          .from('connections')
+                                          .insert({
+                                            sender_id: user.id,
+                                            receiver_id: profile.id,
+                                            status: 'PENDING'
+                                          });
+
+                                        if (inviteError) throw inviteError;
+
+                                        alert(`Connection request successfully sent to @${profile.username}!`);
+                                        setFriendCodeInput(''); // Clear the input field completely
+                                        fetchDashboardData(); // Refresh squad list matrix
+                                      } catch (err) {
+                                        console.error(err);
+                                        alert("Could not complete connection. They might already be in your squad!");
+                                      }
                                     }}
-                                    className="w-full text-left px-4 py-2.5 hover:bg-slate-50 text-xs text-slate-700 transition-colors flex items-center justify-between"
+                                    className="w-full p-3 flex items-center justify-between hover:bg-slate-50 text-left transition-colors text-xs font-medium text-slate-700"
                                   >
-                                    <span>
-                                      @{profile.username || 'user'} ({profile.roll_number || 'N/A'})
+                                    <div className="flex flex-col">
+                                      <span className="font-bold text-slate-800">@{profile.username}</span>
+                                      <span className="text-[10px] text-slate-400 font-normal">
+                                        {profile.full_name} ({profile.roll_number || profile.branch})
+                                      </span>
+                                    </div>
+                                    <span className="text-[11px] font-bold text-blue-600 pointer-events-none">
+                                      Connect
                                     </span>
-                                    <span className="text-[10px] text-blue-500 font-bold">Connect</span>
                                   </button>
                                 ))}
                               </div>
