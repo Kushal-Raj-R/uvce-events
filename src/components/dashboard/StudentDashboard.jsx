@@ -171,9 +171,32 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
       )
       .subscribe();
 
+    // 2b. Set up a Supabase Realtime channel for instant notification popping
+    let realtimeConnections = null;
+    if (user?.id) {
+      realtimeConnections = supabase
+        .channel('realtime_connections')
+        .on(
+          'postgres_changes',
+          { 
+            event: 'INSERT', 
+            schema: 'public', 
+            table: 'connections',
+            filter: `receiver_id=eq.${user.id}`
+          },
+          () => {
+            fetchIncomingFriendInvites(); // Refresh list the second a row gets inserted
+          }
+        )
+        .subscribe();
+    }
+
     // 3. Clean up the socket channel connection when the component unmounts
     return () => {
       supabase.removeChannel(eventsSubscription);
+      if (realtimeConnections) {
+        supabase.removeChannel(realtimeConnections);
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, refreshCount]);
@@ -372,33 +395,49 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
   const fetchIncomingFriendInvites = async () => {
     if (!user?.id) return;
 
-    const { data, error } = await supabase
-      .from('connections')
-      .select(`
-        id,
-        sender_id,
-        profiles:sender_id (
-          full_name,
-          branch,
-          roll_number,
-          friend_code
-        )
-      `)
-      .eq('receiver_id', user.id)
-      .eq('status', 'PENDING');
+    try {
+      // 🚀 STEP 1: Fetch incoming squad connections targeting this logged-in user
+      const { data: squadInvites, error: squadError } = await supabase
+        .from('connections')
+        .select(`
+          id,
+          status,
+          created_at,
+          sender_id,
+          profiles:sender_id (
+            full_name,
+            username
+          )
+        `)
+        .eq('receiver_id', user.id)
+        .eq('status', 'PENDING')
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error("Notification Fetch Error:", error.message);
-    } else {
-      setInviteNotifications(data || []);
-      
+      if (squadError) throw squadError;
+
+      // 🚀 STEP 2: Map the connection items into clean notification objects
+      const formattedInvites = (squadInvites || []).map(invite => ({
+        id: invite.id,
+        type: 'SQUAD_INVITE',
+        title: 'New Squad Connection',
+        message: `@${invite.profiles?.username || 'Someone'} (${invite.profiles?.full_name}) connected with you!`,
+        time: invite.created_at,
+        isRead: false
+      }));
+
+      // STEP 3: Update notifications array state
+      setInviteNotifications(formattedInvites);
+
       // Keep pendingInvites in sync for sidebar indicator badge
-      const mappedPending = (data || []).map(invite => ({
+      const mappedPending = (squadInvites || []).map(invite => ({
         id: invite.id,
         sender: invite.profiles,
         created_at: invite.created_at || new Date().toISOString()
       }));
       setPendingInvites(mappedPending);
+
+    } catch (err) {
+      console.error("Error formatting notification center streams:", err.message);
     }
   };
 
@@ -903,34 +942,33 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                       <div className="py-4 text-center text-xs text-slate-400 italic">No new notifications</div>
                     ) : (
                       <div className="max-h-60 overflow-y-auto divide-y divide-slate-100">
-                        {inviteNotifications.map((invite) => (
-                          <div key={invite.id} className="py-3 first:pt-0 last:pb-0 flex flex-col gap-2">
-                            <div className="flex items-start gap-3">
-                              <div className="w-8 h-8 bg-blue-100 text-blue-600 font-bold rounded-full flex items-center justify-center text-xs shrink-0">
-                                {invite.profiles?.full_name ? invite.profiles.full_name.charAt(0).toUpperCase() : '?'}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs font-medium text-slate-700 leading-normal">
-                                  <strong className="font-bold text-slate-900">{invite.profiles?.full_name || 'Someone'}</strong> sent you a connection request.
-                                </p>
-                                <span className="text-[9px] text-slate-400 block mt-0.5">
-                                  Code: <span className="font-mono bg-slate-50 px-1 py-0.5 rounded border border-slate-100">{invite.profiles?.friend_code || '------'}</span>
-                                </span>
-                              </div>
+                        {inviteNotifications.map((item) => (
+                          <div key={item.id} className="p-3 hover:bg-slate-50 transition-colors flex flex-col gap-1 rounded-xl">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs">👋</span>
+                              <span className="text-[11px] font-bold text-slate-800">{item.title}</span>
                             </div>
-                            <div className="flex justify-end gap-2 pl-11">
-                              <button
-                                onClick={() => handleDeclineInvite(invite.id)}
-                                className="px-2.5 py-1 text-[10px] font-semibold text-slate-600 hover:text-slate-800 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
-                              >
-                                Decline
-                              </button>
-                              <button
-                                onClick={() => handleAcceptInvite(invite.id)}
-                                className="px-3 py-1 text-[10px] font-semibold text-white bg-primary-500 hover:bg-primary-600 rounded-lg transition-colors shadow-sm"
-                              >
-                                Accept
-                              </button>
+                            <p className="text-[11px] text-slate-500 font-medium leading-normal">{item.message}</p>
+                            <div className="flex justify-between items-center mt-1">
+                              <span className="text-[9px] text-slate-400 font-normal">
+                                {new Date(item.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                              {item.type === 'SQUAD_INVITE' && (
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleDeclineInvite(item.id)}
+                                    className="px-2 py-0.5 text-[10px] font-semibold text-slate-600 hover:text-slate-800 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                                  >
+                                    Decline
+                                  </button>
+                                  <button
+                                    onClick={() => handleAcceptInvite(item.id)}
+                                    className="px-2.5 py-0.5 text-[10px] font-semibold text-white bg-primary-500 hover:bg-primary-600 rounded-lg transition-colors shadow-sm"
+                                  >
+                                    Accept
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           </div>
                         ))}
