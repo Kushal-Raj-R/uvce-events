@@ -897,7 +897,10 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
       <main className="flex-grow flex flex-col min-w-0 pb-24 md:pb-6 transition-all duration-200">
         {/* Header Bar */}
         <header className="h-auto py-4 sm:py-0 sm:h-20 bg-white border-b border-slate-200 px-4 sm:px-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
-          <div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-black text-primary-500 tracking-widest uppercase md:hidden">
+              UVCEvents
+            </span>
             <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight leading-tight capitalize">
               {activeTab === 'upcoming' 
                 ? 'All Workshops & Seminars' 
@@ -1003,7 +1006,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
                 onClick={onSwitchRole}
                 className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer border border-slate-200/60 active:scale-95"
               >
-                🏫 <span className="inline">Switch to Organizer</span>
+                🏫 <span className="hidden sm:inline">Switch to Organizer</span><span className="inline sm:hidden">Switch</span>
               </button>
             )}
 
