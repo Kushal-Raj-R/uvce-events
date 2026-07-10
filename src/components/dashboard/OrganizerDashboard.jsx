@@ -101,23 +101,75 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
     return chartMap;
   }, [events]);
 
+  // Helper to read form draft from sessionStorage
+  const getSessionDraft = (key, fallback) => {
+    try {
+      const draftStr = sessionStorage.getItem('eventCreationDraft');
+      if (draftStr) {
+        const draft = JSON.parse(draftStr);
+        if (draft[key] !== undefined) return draft[key];
+      }
+    } catch (e) {
+      console.error("Error reading eventCreationDraft:", e);
+    }
+    return fallback;
+  };
+
   // Form State for Event Creation
-  const [eventTitle, setEventTitle] = useState('');
-  const [locationType, setLocationType] = useState('In-Person');
-  const [participationType, setParticipationType] = useState('Solo');
-  const [minTeamSize, setMinTeamSize] = useState(1);
-  const [maxTeamSize, setMaxTeamSize] = useState(3);
-  const [description, setDescription] = useState('');
-  const [bannerUrl, setBannerUrl] = useState('');
-  const [clubCategory, setClubCategory] = useState('IEEE');
-  const [registrationDeadline, setRegistrationDeadline] = useState('');
-  const [eventStartDate, setEventStartDate] = useState('');
-  const [durationDays, setDurationDays] = useState(1);
-  const [customFields, setCustomFields] = useState([]);
-  const [editingDraftId, setEditingDraftId] = useState(null);
-  const [documents, setDocuments] = useState([]);
-  const [eventScope, setEventScope] = useState('ALL');
+  const [eventTitle, setEventTitle] = useState(() => getSessionDraft('eventTitle', ''));
+  const [locationType, setLocationType] = useState(() => getSessionDraft('locationType', 'In-Person'));
+  const [participationType, setParticipationType] = useState(() => getSessionDraft('participationType', 'Solo'));
+  const [minTeamSize, setMinTeamSize] = useState(() => getSessionDraft('minTeamSize', 1));
+  const [maxTeamSize, setMaxTeamSize] = useState(() => getSessionDraft('maxTeamSize', 3));
+  const [description, setDescription] = useState(() => getSessionDraft('description', ''));
+  const [bannerUrl, setBannerUrl] = useState(() => getSessionDraft('bannerUrl', ''));
+  const [clubCategory, setClubCategory] = useState(() => getSessionDraft('clubCategory', 'IEEE'));
+  const [registrationDeadline, setRegistrationDeadline] = useState(() => getSessionDraft('registrationDeadline', ''));
+  const [eventStartDate, setEventStartDate] = useState(() => getSessionDraft('eventStartDate', ''));
+  const [durationDays, setDurationDays] = useState(() => getSessionDraft('durationDays', 1));
+  const [customFields, setCustomFields] = useState(() => getSessionDraft('customFields', []));
+  const [editingDraftId, setEditingDraftId] = useState(() => getSessionDraft('editingDraftId', null));
+  const [documents, setDocuments] = useState(() => getSessionDraft('documents', []));
+  const [eventScope, setEventScope] = useState(() => getSessionDraft('eventScope', 'ALL'));
   const [interruptedUpload, setInterruptedUpload] = useState(false);
+
+  // Auto-save Event Creation form state to sessionStorage
+  useEffect(() => {
+    const draftState = {
+      eventTitle,
+      locationType,
+      participationType,
+      minTeamSize,
+      maxTeamSize,
+      description,
+      bannerUrl,
+      clubCategory,
+      registrationDeadline,
+      eventStartDate,
+      durationDays,
+      customFields,
+      editingDraftId,
+      documents,
+      eventScope
+    };
+    sessionStorage.setItem('eventCreationDraft', JSON.stringify(draftState));
+  }, [
+    eventTitle,
+    locationType,
+    participationType,
+    minTeamSize,
+    maxTeamSize,
+    description,
+    bannerUrl,
+    clubCategory,
+    registrationDeadline,
+    eventStartDate,
+    durationDays,
+    customFields,
+    editingDraftId,
+    documents,
+    eventScope
+  ]);
 
   // Form State for Adding a Custom Field
   const [showFieldBuilder, setShowFieldBuilder] = useState(false);
@@ -489,6 +541,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
           : (forceDraft ? 'Draft saved successfully!' : 'Event registration launched successfully!')
       );
       // Reset form
+      sessionStorage.removeItem('eventCreationDraft');
       setEditingDraftId(null);
       setEventTitle('');
       setLocationType('In-Person');
