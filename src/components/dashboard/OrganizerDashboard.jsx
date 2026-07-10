@@ -117,6 +117,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
   const [editingDraftId, setEditingDraftId] = useState(null);
   const [documents, setDocuments] = useState([]);
   const [eventScope, setEventScope] = useState('ALL');
+  const [interruptedUpload, setInterruptedUpload] = useState(false);
 
   // Form State for Adding a Custom Field
   const [showFieldBuilder, setShowFieldBuilder] = useState(false);
@@ -172,6 +173,8 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
   };
 
   const handleNestedFileUpload = async (e, id) => {
+    sessionStorage.removeItem('pendingOrganizerUpload');
+    setInterruptedUpload(false);
     const file = e.target.files[0];
     if (!file) return;
 
@@ -210,6 +213,21 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
   useEffect(() => {
     fetchOrganizerData();
     fetchProfile();
+
+    // Check for interrupted organizer upload
+    const pendingOrgUpload = sessionStorage.getItem('pendingOrganizerUpload');
+    if (pendingOrgUpload) {
+      try {
+        const pending = JSON.parse(pendingOrgUpload);
+        const timeDiff = Date.now() - pending.timestamp;
+        if (timeDiff < 120000) { // within 2 minutes
+          setInterruptedUpload(true);
+        }
+      } catch (e) {
+        console.error("Error parsing pending organizer upload:", e);
+      }
+      sessionStorage.removeItem('pendingOrganizerUpload');
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
@@ -383,6 +401,8 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
   };
 
   const handleBannerUpload = async (e) => {
+    sessionStorage.removeItem('pendingOrganizerUpload');
+    setInterruptedUpload(false);
     const file = e.target.files[0];
     if (!file) return;
 
@@ -830,6 +850,22 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                         </h3>
                       </div>
 
+                      {interruptedUpload && (
+                        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-xl flex items-center justify-between text-xs animate-fade-in">
+                          <div className="flex items-center gap-2">
+                            <span>⚠️</span>
+                            <span>Your file upload may have been interrupted. Please re-select your file and try again.</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setInterruptedUpload(false)}
+                            className="text-amber-600 hover:text-amber-800 font-bold underline"
+                          >
+                            Dismiss
+                          </button>
+                        </div>
+                      )}
+
                       {editingDraftId && (
                         <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-xl flex items-center justify-between text-xs animate-fade-in">
                           <div>
@@ -979,6 +1015,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                              type="file" 
                              accept="image/*"
                              name="banner_image"
+                             onClick={() => sessionStorage.setItem('pendingOrganizerUpload', JSON.stringify({ field: 'banner', timestamp: Date.now() }))}
                              onChange={handleBannerUpload}
                              className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                            />
@@ -1035,6 +1072,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                                           type="file"
                                           accept=".pdf, image/*"
                                           className="hidden"
+                                          onClick={() => sessionStorage.setItem('pendingOrganizerUpload', JSON.stringify({ field: `document_${doc.id}`, timestamp: Date.now() }))}
                                           onChange={(e) => handleNestedFileUpload(e, doc.id)}
                                         />
                                       </label>

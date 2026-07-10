@@ -15,10 +15,6 @@ export default function App() {
   const activeUserIdRef = useRef(null);
 
   useEffect(() => {
-    activeUserIdRef.current = user?.id;
-  }, [user]);
-
-  useEffect(() => {
     // 0. Recover crashed mobile registration session
     const recoverCrashedMobileSession = () => {
       const cachedAnswersKey = Object.keys(localStorage).find(key => key.startsWith('reg_answers_'));
@@ -42,10 +38,12 @@ export default function App() {
       if (data?.session) {
         setSession(data.session);
         setUser(data.session.user);
+        activeUserIdRef.current = data.session.user.id;
         await resolveUserRole(data.session.user);
       } else {
         setSession(null);
         setUser(null);
+        activeUserIdRef.current = null;
         setRole(null);
         setDbRole(null);
       }
@@ -64,6 +62,7 @@ export default function App() {
         setSession(newSession);
         if (newSession) {
           setUser(newSession.user);
+          activeUserIdRef.current = newSession.user.id;
         }
         return; 
       }
@@ -75,6 +74,7 @@ export default function App() {
         console.log("🛡️ Re-focus/Same user session verification. Blocking loader layout flash.");
         setSession(newSession);
         setUser(newSession.user);
+        activeUserIdRef.current = newSession.user.id;
         return;
       }
 
@@ -82,10 +82,12 @@ export default function App() {
       if (newSession) {
         setSession(newSession);
         setUser(newSession.user);
+        activeUserIdRef.current = newSession.user.id;
         await resolveUserRole(newSession.user, event);
       } else {
         setSession(null);
         setUser(null);
+        activeUserIdRef.current = null;
         setRole(null);
         setDbRole(null);
       }
@@ -131,6 +133,7 @@ export default function App() {
 
   const handleAuthSuccess = (authUser, authRole) => {
     setUser(authUser);
+    activeUserIdRef.current = authUser ? authUser.id : null;
     setRole(authRole);
     setDbRole(authRole);
     setSession({ user: authUser });
@@ -144,6 +147,7 @@ export default function App() {
     localStorage.removeItem('portal_active_tab');
     setSession(null);
     setUser(null);
+    activeUserIdRef.current = null;
     setRole(null);
     setLoading(false);
   };
