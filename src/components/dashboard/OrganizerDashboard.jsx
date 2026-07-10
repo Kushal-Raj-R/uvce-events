@@ -101,12 +101,17 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
     return chartMap;
   }, [events]);
 
-  // Helper to read form draft from sessionStorage
-  const getSessionDraft = (key, fallback) => {
+  // Helper to read form draft from localStorage with 30-minute expiry
+  const getLocalStorageDraft = (key, fallback) => {
     try {
-      const draftStr = sessionStorage.getItem('eventCreationDraft');
+      const draftStr = localStorage.getItem('eventCreationDraft');
       if (draftStr) {
         const draft = JSON.parse(draftStr);
+        const savedAt = draft.savedAt || 0;
+        if (Date.now() - savedAt > 30 * 60 * 1000) { // older than 30 mins
+          localStorage.removeItem('eventCreationDraft');
+          return fallback;
+        }
         if (draft[key] !== undefined) return draft[key];
       }
     } catch (e) {
@@ -116,24 +121,24 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
   };
 
   // Form State for Event Creation
-  const [eventTitle, setEventTitle] = useState(() => getSessionDraft('eventTitle', ''));
-  const [locationType, setLocationType] = useState(() => getSessionDraft('locationType', 'In-Person'));
-  const [participationType, setParticipationType] = useState(() => getSessionDraft('participationType', 'Solo'));
-  const [minTeamSize, setMinTeamSize] = useState(() => getSessionDraft('minTeamSize', 1));
-  const [maxTeamSize, setMaxTeamSize] = useState(() => getSessionDraft('maxTeamSize', 3));
-  const [description, setDescription] = useState(() => getSessionDraft('description', ''));
-  const [bannerUrl, setBannerUrl] = useState(() => getSessionDraft('bannerUrl', ''));
-  const [clubCategory, setClubCategory] = useState(() => getSessionDraft('clubCategory', 'IEEE'));
-  const [registrationDeadline, setRegistrationDeadline] = useState(() => getSessionDraft('registrationDeadline', ''));
-  const [eventStartDate, setEventStartDate] = useState(() => getSessionDraft('eventStartDate', ''));
-  const [durationDays, setDurationDays] = useState(() => getSessionDraft('durationDays', 1));
-  const [customFields, setCustomFields] = useState(() => getSessionDraft('customFields', []));
-  const [editingDraftId, setEditingDraftId] = useState(() => getSessionDraft('editingDraftId', null));
-  const [documents, setDocuments] = useState(() => getSessionDraft('documents', []));
-  const [eventScope, setEventScope] = useState(() => getSessionDraft('eventScope', 'ALL'));
+  const [eventTitle, setEventTitle] = useState(() => getLocalStorageDraft('eventTitle', ''));
+  const [locationType, setLocationType] = useState(() => getLocalStorageDraft('locationType', 'In-Person'));
+  const [participationType, setParticipationType] = useState(() => getLocalStorageDraft('participationType', 'Solo'));
+  const [minTeamSize, setMinTeamSize] = useState(() => getLocalStorageDraft('minTeamSize', 1));
+  const [maxTeamSize, setMaxTeamSize] = useState(() => getLocalStorageDraft('maxTeamSize', 3));
+  const [description, setDescription] = useState(() => getLocalStorageDraft('description', ''));
+  const [bannerUrl, setBannerUrl] = useState(() => getLocalStorageDraft('bannerUrl', ''));
+  const [clubCategory, setClubCategory] = useState(() => getLocalStorageDraft('clubCategory', 'IEEE'));
+  const [registrationDeadline, setRegistrationDeadline] = useState(() => getLocalStorageDraft('registrationDeadline', ''));
+  const [eventStartDate, setEventStartDate] = useState(() => getLocalStorageDraft('eventStartDate', ''));
+  const [durationDays, setDurationDays] = useState(() => getLocalStorageDraft('durationDays', 1));
+  const [customFields, setCustomFields] = useState(() => getLocalStorageDraft('customFields', []));
+  const [editingDraftId, setEditingDraftId] = useState(() => getLocalStorageDraft('editingDraftId', null));
+  const [documents, setDocuments] = useState(() => getLocalStorageDraft('documents', []));
+  const [eventScope, setEventScope] = useState(() => getLocalStorageDraft('eventScope', 'ALL'));
   const [interruptedUpload, setInterruptedUpload] = useState(false);
 
-  // Auto-save Event Creation form state to sessionStorage
+  // Auto-save Event Creation form state to localStorage with savedAt timestamp
   useEffect(() => {
     const draftState = {
       eventTitle,
@@ -150,9 +155,10 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
       customFields,
       editingDraftId,
       documents,
-      eventScope
+      eventScope,
+      savedAt: Date.now()
     };
-    sessionStorage.setItem('eventCreationDraft', JSON.stringify(draftState));
+    localStorage.setItem('eventCreationDraft', JSON.stringify(draftState));
   }, [
     eventTitle,
     locationType,
@@ -225,7 +231,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
   };
 
   const handleNestedFileUpload = async (e, id) => {
-    sessionStorage.removeItem('pendingOrganizerUpload');
+    localStorage.removeItem('pendingOrganizerUpload');
     setInterruptedUpload(false);
     const file = e.target.files[0];
     if (!file) return;
@@ -267,7 +273,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
     fetchProfile();
 
     // Check for interrupted organizer upload
-    const pendingOrgUpload = sessionStorage.getItem('pendingOrganizerUpload');
+    const pendingOrgUpload = localStorage.getItem('pendingOrganizerUpload');
     if (pendingOrgUpload) {
       try {
         const pending = JSON.parse(pendingOrgUpload);
@@ -278,7 +284,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
       } catch (e) {
         console.error("Error parsing pending organizer upload:", e);
       }
-      sessionStorage.removeItem('pendingOrganizerUpload');
+      localStorage.removeItem('pendingOrganizerUpload');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
@@ -453,7 +459,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
   };
 
   const handleBannerUpload = async (e) => {
-    sessionStorage.removeItem('pendingOrganizerUpload');
+    localStorage.removeItem('pendingOrganizerUpload');
     setInterruptedUpload(false);
     const file = e.target.files[0];
     if (!file) return;
@@ -541,7 +547,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
           : (forceDraft ? 'Draft saved successfully!' : 'Event registration launched successfully!')
       );
       // Reset form
-      sessionStorage.removeItem('eventCreationDraft');
+      localStorage.removeItem('eventCreationDraft');
       setEditingDraftId(null);
       setEventTitle('');
       setLocationType('In-Person');
@@ -1068,7 +1074,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                              type="file" 
                              accept="image/*"
                              name="banner_image"
-                             onClick={() => sessionStorage.setItem('pendingOrganizerUpload', JSON.stringify({ field: 'banner', timestamp: Date.now() }))}
+                             onClick={() => localStorage.setItem('pendingOrganizerUpload', JSON.stringify({ field: 'banner', timestamp: Date.now() }))}
                              onChange={handleBannerUpload}
                              className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                            />
@@ -1125,7 +1131,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                                           type="file"
                                           accept=".pdf, image/*"
                                           className="hidden"
-                                          onClick={() => sessionStorage.setItem('pendingOrganizerUpload', JSON.stringify({ field: `document_${doc.id}`, timestamp: Date.now() }))}
+                                          onClick={() => localStorage.setItem('pendingOrganizerUpload', JSON.stringify({ field: `document_${doc.id}`, timestamp: Date.now() }))}
                                           onChange={(e) => handleNestedFileUpload(e, doc.id)}
                                         />
                                       </label>

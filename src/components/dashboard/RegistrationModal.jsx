@@ -4,16 +4,29 @@ import imageCompression from 'browser-image-compression';
 
 export default function RegistrationModal({ event, user, onClose, onSuccess, onRefresh }) {
   const [profile, setProfile] = useState(null);
-  const [answers, setAnswers] = useState(() => {
-    const draftStr = event?.id ? sessionStorage.getItem(`eventRegistrationDraft:${event.id}`) : null;
-    if (draftStr) {
-      try {
+
+  // Helper to read registration draft from localStorage with 30-minute expiry
+  const getRegistrationDraft = (key, fallback) => {
+    try {
+      const draftStr = event?.id ? localStorage.getItem(`eventRegistrationDraft:${event.id}`) : null;
+      if (draftStr) {
         const draft = JSON.parse(draftStr);
-        if (draft.answers) return draft.answers;
-      } catch (e) {
-        console.error(e);
+        const savedAt = draft.savedAt || 0;
+        if (Date.now() - savedAt > 30 * 60 * 1000) { // older than 30 mins
+          localStorage.removeItem(`eventRegistrationDraft:${event.id}`);
+          return fallback;
+        }
+        if (draft[key] !== undefined) return draft[key];
       }
+    } catch (e) {
+      console.error(e);
     }
+    return fallback;
+  };
+
+  const [answers, setAnswers] = useState(() => {
+    const draftAns = getRegistrationDraft('answers', null);
+    if (draftAns) return draftAns;
     const saved = event?.id ? localStorage.getItem(`reg_answers_${event.id}`) : null;
     return saved ? JSON.parse(saved) : {};
   });
@@ -21,39 +34,16 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
   const [errorMsg, setErrorMsg] = useState('');
   const [success, setSuccess] = useState(false);
   const [squad, setSquad] = useState([]);
-  const [selectedTeammates, setSelectedTeammates] = useState(() => {
-    const draftStr = event?.id ? sessionStorage.getItem(`eventRegistrationDraft:${event.id}`) : null;
-    if (draftStr) {
-      try {
-        const draft = JSON.parse(draftStr);
-        if (draft.selectedTeammates) return draft.selectedTeammates;
-      } catch {}
-    }
-    return [];
-  });
-  const [teamName, setTeamName] = useState(() => {
-    const draftStr = event?.id ? sessionStorage.getItem(`eventRegistrationDraft:${event.id}`) : null;
-    if (draftStr) {
-      try {
-        const draft = JSON.parse(draftStr);
-        if (draft.teamName) return draft.teamName;
-      } catch {}
-    }
-    return '';
-  });
+  const [selectedTeammates, setSelectedTeammates] = useState(() => getRegistrationDraft('selectedTeammates', []));
+  const [teamName, setTeamName] = useState(() => getRegistrationDraft('teamName', ''));
   const [currentStep, setCurrentStep] = useState(() => {
-    const draftStr = event?.id ? sessionStorage.getItem(`eventRegistrationDraft:${event.id}`) : null;
-    if (draftStr) {
-      try {
-        const draft = JSON.parse(draftStr);
-        if (draft.currentStep) return draft.currentStep;
-      } catch {}
-    }
+    const draftStep = getRegistrationDraft('currentStep', null);
+    if (draftStep) return draftStep;
     const savedStep = localStorage.getItem('active_wizard_step');
     return savedStep ? parseInt(savedStep, 10) : 1;
   });
 
-  // Automatically save form draft state to sessionStorage on every change
+  // Automatically save form draft state to localStorage on every change
   useEffect(() => {
     if (!event?.id) return;
     
@@ -61,7 +51,8 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
       currentStep,
       teamName,
       selectedTeammates,
-      answers: {}
+      answers: {},
+      savedAt: Date.now()
     };
     
     Object.keys(answers).forEach(key => {
@@ -76,7 +67,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
       }
     });
     
-    sessionStorage.setItem(`eventRegistrationDraft:${event.id}`, JSON.stringify(draft));
+    localStorage.setItem(`eventRegistrationDraft:${event.id}`, JSON.stringify(draft));
   }, [currentStep, teamName, selectedTeammates, answers, event?.id]);
 
   const handleStepNavigation = (targetStep) => {
@@ -88,13 +79,13 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
     localStorage.removeItem('active_wizard_step');
     localStorage.removeItem(`reg_answers_${event?.id}`);
     if (event?.id) {
-      sessionStorage.removeItem(`eventRegistrationDraft:${event.id}`);
+      localStorage.removeItem(`eventRegistrationDraft:${event.id}`);
     }
     onClose();
   };
 
   useEffect(() => {
-    const draftStr = event?.id ? sessionStorage.getItem(`eventRegistrationDraft:${event.id}`) : null;
+    const draftStr = event?.id ? localStorage.getItem(`eventRegistrationDraft:${event.id}`) : null;
     if (!draftStr) {
       const savedStep = localStorage.getItem('active_wizard_step');
       if (!savedStep) {
@@ -378,7 +369,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
       localStorage.removeItem('active_wizard_step');
       localStorage.removeItem(`reg_answers_${event?.id}`);
       if (event?.id) {
-        sessionStorage.removeItem(`eventRegistrationDraft:${event.id}`);
+        localStorage.removeItem(`eventRegistrationDraft:${event.id}`);
       }
       if (typeof onRefresh === 'function') {
         onRefresh();

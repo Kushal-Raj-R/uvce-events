@@ -65,7 +65,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
   // Rehydrate/Persist Scroll and Pending Upload state
   useEffect(() => {
     // 1. Check for interrupted upload
-    const pendingStr = sessionStorage.getItem('pendingUpload');
+    const pendingStr = localStorage.getItem('pendingUpload');
     if (pendingStr) {
       try {
         const pending = JSON.parse(pendingStr);
@@ -77,7 +77,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
       } catch (e) {
         console.error("Error parsing pending upload:", e);
       }
-      sessionStorage.removeItem('pendingUpload');
+      localStorage.removeItem('pendingUpload');
     }
 
     // 2. Add scroll listener
@@ -276,11 +276,11 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
   };
 
   const handleChooseFileClick = (registrationId) => {
-    sessionStorage.setItem('pendingUpload', JSON.stringify({ registrationId, timestamp: Date.now() }));
+    localStorage.setItem('pendingUpload', JSON.stringify({ registrationId, timestamp: Date.now() }));
   };
 
   const handleSolutionUpload = async (e, registrationId) => {
-    sessionStorage.removeItem('pendingUpload');
+    localStorage.removeItem('pendingUpload');
     setInterruptedUploadRegId(null);
     const file = e.target.files[0];
     if (!file) return;
