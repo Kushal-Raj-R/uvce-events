@@ -215,7 +215,7 @@ export default function RegistrantsListModal({ event, onClose }) {
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl max-w-4xl w-full shadow-2xl overflow-hidden animate-fade-in flex flex-col max-h-[85vh]">
         {/* Header */}
-        <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+        <div className="px-6 py-4 bg-slate-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-50">
           <div>
             <h3 className="font-bold text-slate-800 text-lg">Registrant List</h3>
             <p className="text-xs text-gray-500 font-medium truncate max-w-[400px]">
@@ -352,8 +352,8 @@ export default function RegistrantsListModal({ event, onClose }) {
                 
               </div>
 
-              <div className="w-full overflow-x-auto border border-slate-100 rounded-xl shadow-sm">
-              <table className="min-w-full text-left border-collapse divide-y divide-slate-100">
+              <div className="overflow-x-auto w-full block scrollbar-thin border border-slate-100 rounded-xl shadow-sm">
+              <table className="min-w-[600px] text-left border-collapse divide-y divide-slate-100">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-100 text-xs font-bold text-gray-400 tracking-wider">
                     <th className="py-3 px-4 min-w-[140px] whitespace-normal break-words">Student Name</th>
@@ -462,8 +462,8 @@ export default function RegistrantsListModal({ event, onClose }) {
                   <p className="text-xs text-slate-400 mt-0.5">Quick access summary of submitted solutions grouped by team name.</p>
                 </div>
                 
-                <div className="w-full max-w-2xl overflow-x-auto border border-slate-100 rounded-xl shadow-sm bg-white">
-                  <table className="min-w-full text-left border-collapse divide-y divide-slate-100">
+                <div className="overflow-x-auto w-full block scrollbar-thin border border-slate-100 rounded-xl shadow-sm bg-white">
+                  <table className="min-w-[400px] text-left border-collapse divide-y divide-slate-100">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-100 text-xs font-bold text-gray-400 tracking-wider">
                         <th className="py-3 px-4 min-w-[200px] whitespace-normal break-words">Team Name</th>
