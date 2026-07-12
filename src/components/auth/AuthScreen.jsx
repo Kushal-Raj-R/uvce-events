@@ -2,8 +2,10 @@
 import React, { useState } from 'react';
 import { supabase, isMockMode } from '../../supabaseClient';
 import { GraduationCap, Calendar } from '../ui/Icons';
+import { useToast } from '../ui/Toast';
 
 export default function AuthScreen({ onAuthSuccess }) {
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState('signin'); // 'signin' | 'signup'
   const role = 'student';
   const [email, setEmail] = useState('');
@@ -467,7 +469,7 @@ export default function AuthScreen({ onAuthSuccess }) {
               <div>
                 <button 
                   type="button"
-                  onClick={() => alert('SSO login is only supported in live mode')} 
+                  onClick={() => showToast('SSO login is only supported in live mode', 'error')} 
                   className="w-full flex items-center justify-center gap-2 border border-slate-200 rounded-xl py-3 px-4 text-xs font-semibold text-gray-600 hover:bg-slate-50 transition-colors"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">

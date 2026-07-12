@@ -12,9 +12,11 @@ import {
   UserIcon
 } from '../ui/Icons';
 import RegistrationModal from './RegistrationModal';
+import { useToast } from '../ui/Toast';
 
 
 export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwitchRole }) {
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState(() => {
     const savedTab = localStorage.getItem('portal_active_tab');
     const validTabs = ['dashboard', 'upcoming', 'registrations', 'friends', 'profile'];
@@ -286,7 +288,7 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
     if (!file) return;
 
     if (file.type !== 'application/pdf') {
-      alert("Please upload a PDF file only.");
+      showToast("Please upload a PDF file only.", "error");
       return;
     }
 
@@ -317,11 +319,11 @@ export default function StudentDashboard({ user, onSignOut, onSwitchRole, canSwi
 
       if (updateError) throw updateError;
 
-      alert("Solution PDF uploaded successfully!");
+      showToast("Solution PDF uploaded successfully!", "success");
       await fetchMyRegistrations();
     } catch (err) {
       console.error("Solution upload error:", err);
-      alert(`Upload failed: ${err.message || 'Check connection details'}`);
+      showToast(`Upload failed: ${err.message || 'Check connection details'}`, "error");
     } finally {
       setUploadingRegId(null);
     }

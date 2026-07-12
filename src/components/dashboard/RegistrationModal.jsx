@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, isMockMode } from '../../supabaseClient';
 import imageCompression from 'browser-image-compression';
+import { useToast } from '../ui/Toast';
 
 export default function RegistrationModal({ event, user, onClose, onSuccess, onRefresh }) {
+  const { showToast } = useToast();
   const [profile, setProfile] = useState(null);
 
   // Helper to read registration draft from localStorage with 30-minute expiry
@@ -733,7 +735,7 @@ export default function RegistrationModal({ event, user, onClose, onSuccess, onR
 
                                      // Validate the file size before doing anything else
                                      if (file.size > maxAllowedBytes) {
-                                       alert(`❌ File too large! The organizer has limited uploads for this event to ${maxAllowedMb}MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB.`);
+                                       showToast(`File too large! The organizer has limited uploads for this event to ${maxAllowedMb}MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB.`, 'error');
                                        
                                        // Clear the input element target reset
                                        e.target.value = "";

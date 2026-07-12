@@ -1,6 +1,7 @@
 // src/components/dashboard/UpdateTimelineModal.jsx
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
+import { useToast } from '../ui/Toast';
 
 const formatDateForInput = (dateStr) => {
   if (!dateStr) return '';
@@ -18,6 +19,7 @@ const formatDateForInput = (dateStr) => {
 };
 
 export default function UpdateTimelineModal({ event, onClose, onSuccess }) {
+  const { showToast } = useToast();
   const [registrationDeadline, setRegistrationDeadline] = useState('');
   const [eventStartDate, setEventStartDate] = useState('');
   const [durationDays, setDurationDays] = useState(1);
@@ -68,7 +70,7 @@ export default function UpdateTimelineModal({ event, onClose, onSuccess }) {
       setErrorMsg(error.message || 'Failed to update timeline.');
       setLoading(false);
     } else {
-      alert('Event timeline updated successfully!');
+      showToast('Event timeline updated successfully!', 'success');
       setLoading(false);
       onSuccess();
     }

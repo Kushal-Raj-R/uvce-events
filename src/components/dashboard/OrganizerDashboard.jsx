@@ -16,6 +16,7 @@ import {
 } from '../ui/Icons';
 import RegistrantsListModal from './RegistrantsListModal';
 import UpdateTimelineModal from './UpdateTimelineModal';
+import { useToast } from '../ui/Toast';
 
 const formatDateForInput = (dateStr) => {
   if (!dateStr) return '';
@@ -33,6 +34,7 @@ const formatDateForInput = (dateStr) => {
 };
 
 export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canSwitchRole }) {
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState(() => {
     const savedTab = localStorage.getItem('portal_active_tab');
     const validTabs = ['dashboard', 'materials', 'profile'];
@@ -57,7 +59,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
 
     if (profileError) {
       console.error('Failed to update organizer profile:', profileError);
-      alert('Failed to update database record: ' + profileError.message);
+      showToast('Failed to update database record: ' + profileError.message, 'error');
       return;
     }
 
@@ -71,11 +73,11 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
 
     if (authError) {
       console.error('Failed to sync auth details:', authError);
-      alert('Failed to sync authentication profile details: ' + authError.message);
+      showToast('Failed to sync authentication profile details: ' + authError.message, 'error');
       return;
     }
 
-    alert('Profile updated successfully!');
+    showToast('Profile updated successfully!', 'success');
   };
 
   const [events, setEvents] = useState([]);
@@ -237,7 +239,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
     if (!file) return;
 
     if (file.type !== 'application/pdf' && !file.type.startsWith('image/')) {
-      alert("Please upload a PDF or an Image file only.");
+      showToast("Please upload a PDF or an Image file only.", "error");
       return;
     }
 
@@ -263,7 +265,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
       setDocuments(prev => prev.map(doc => doc.id === id ? { ...doc, url: publicUrl, uploading: false } : doc));
     } catch (err) {
       console.error("Document upload error:", err);
-      alert(`Upload failed: ${err.message}`);
+      showToast(`Upload failed: ${err.message}`, "error");
       setDocuments(prev => prev.map(doc => doc.id === id ? { ...doc, uploading: false } : doc));
     }
   };
@@ -404,7 +406,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
 
   const handleSaveMaterialsSettings = async (eventId, file, noticeText, allowSubmissionsVal) => {
     if (!eventId) {
-      alert("Please select an event first.");
+      showToast("Please select an event first.", "error");
       return;
     }
 
@@ -446,7 +448,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
 
       if (updateError) throw updateError;
 
-      alert("Event materials settings successfully saved and deployed!");
+      showToast("Event materials settings successfully saved and deployed!", "success");
       setSelectedUploadFile(null);
       
       if (typeof fetchOrganizerEvents === 'function') {
@@ -454,7 +456,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
       }
     } catch (err) {
       console.error("Detailed Mutation Error Logging Context:", err);
-      alert(`Failed to save: ${err.message || 'Check database permissions'}`);
+      showToast(`Failed to save: ${err.message || 'Check database permissions'}`, "error");
     }
   };
 
@@ -480,7 +482,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
           .upload(filePath, file);
 
         if (uploadError) {
-          alert('Failed to upload banner: ' + uploadError.message);
+          showToast('Failed to upload banner: ' + uploadError.message, 'error');
           return;
         }
 
@@ -490,10 +492,10 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
 
         setBannerUrl(urlData.publicUrl);
       }
-      alert('Banner image uploaded successfully!');
+      showToast('Banner image uploaded successfully!', 'success');
     } catch (err) {
       console.error(err);
-      alert('Banner upload failed: ' + err.message);
+      showToast('Banner upload failed: ' + err.message, 'error');
     }
   };
 
@@ -501,7 +503,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
   const handleCreateEvent = async (e, forceDraft = false) => {
     e.preventDefault();
     if (!eventTitle || !eventStartDate) {
-      alert('Event Title and Event Start Date are required.');
+      showToast('Event Title and Event Start Date are required.', 'error');
       return;
     }
 
@@ -539,12 +541,13 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
     const { error } = result;
 
     if (error) {
-      alert('Failed to save event: ' + error.message);
+      showToast('Failed to save event: ' + error.message, 'error');
     } else {
-      alert(
+      showToast(
         editingDraftId
           ? (forceDraft ? 'Draft updated successfully!' : 'Draft event launched successfully!')
-          : (forceDraft ? 'Draft saved successfully!' : 'Event registration launched successfully!')
+          : (forceDraft ? 'Draft saved successfully!' : 'Event registration launched successfully!'),
+        'success'
       );
       // Reset form
       localStorage.removeItem('eventCreationDraft');
@@ -588,7 +591,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
           .eq('id', event.id);
 
         if (dbDeleteError) throw dbDeleteError;
-        alert("✓ Event deleted successfully (Mock mode)!");
+        showToast("Event deleted successfully (Mock mode)!", "success");
         fetchOrganizerData();
         return;
       }
@@ -604,21 +607,18 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
       }
 
       if (data?.success) {
-        let successMessage = "✓ Event and all associated organizer/student assets successfully deleted!";
+        let successMessage = "Event and all associated assets successfully deleted!";
         if (data.failedPurges) {
-          successMessage += "\n\n⚠️ Note: Some files could not be removed from storage (they may have already been missing or deleted):";
-          Object.keys(data.failedPurges).forEach(bucket => {
-            successMessage += `\n- Bucket [${bucket}]: ${data.failedPurges[bucket].length} file(s)`;
-          });
+          successMessage += " Some files could not be removed from storage.";
         }
-        alert(successMessage);
+        showToast(successMessage, "success");
         fetchOrganizerData();
       } else {
         throw new Error(data?.error || 'Edge function returned failure status');
       }
 
     } catch (err) {
-      alert(`Cascade deletion failed: ${err.message}`);
+      showToast(`Cascade deletion failed: ${err.message}`, "error");
     } finally {
       setIsDeleting(false);
     }
@@ -633,8 +633,9 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
       .eq('id', eventObj.id);
 
     if (error) {
-      alert('Failed to update event: ' + error.message);
+      showToast('Failed to update event: ' + error.message, 'error');
     } else {
+      showToast(`Event status updated to ${nextStatus}!`, 'success');
       fetchOrganizerData();
     }
   };
@@ -1486,7 +1487,7 @@ export default function OrganizerDashboard({ user, onSignOut, onSwitchRole, canS
                             <button
                               onClick={() => {
                                 // Export all events summary
-                                alert('Generating CSV summary for all managed events...');
+                                showToast('Generating CSV summary for all managed events...', 'success');
                               }}
                               className="text-[10px] font-semibold text-primary-500 hover:underline"
                             >
